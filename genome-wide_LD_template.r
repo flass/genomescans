@@ -8,10 +8,12 @@ library('ade4')
 ## define path to R source file
 user = Sys.info()['user']
 homedir = paste('/home', user, sep='/')
-source(paste(homedir, 'path/to/utils-phylo.r', sep='/'))
+#~ nfsource = paste(homedir, 'scripts/misc/utils-phylo.r', sep='/')
+nfsource = 'path/to/utils-phylo.r'
+source(nfsource)
 
 ## define path to result directory
-resultdir = 'path/to/data/and/results/direcory'
+resultdir = 'path/to/data/and/results/directory'
 
 
 ## parameters
@@ -198,7 +200,8 @@ hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsea
 ### to determine which gene harbour the LD hospots
 
 # must load CDS coordinates
-nfmapcds = paste('somepath', "mapCDSalignementsToRef.RData", sep="/")
+#~ nfmapcds = paste('somepath', "mapCDSalignementsToRef.RData", sep="/")
+nfmapcds = '/path/to/map/genes/location/to/ref/genome.RData'
 
 ### MUST generate in a separate script (or add to this one here) a list called 'lcds.ref.i' with each elelment refering to a gene, and named accordingly (unique names as they are indexes)
 ### each element is a vector of positions in the genomic alignment corresponding to the segment of the reference sequence where is annotated the gene, i.e. it is a subset of 'map.full2ref'
