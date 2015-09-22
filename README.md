@@ -1,12 +1,12 @@
 # genomescans
 R module and script for the analysis of aligned biological sequences, mainly to perform genome-wide scan for the detection of hotspots of diversity, LD, etc.
 
-## 'genome-wide_LD_template.r'
+## [genome-wide_LD_template.r](https://github.com/flass/genomescans/blob/master/genome-wide_LD_template.r)
 
-The 'genome-wide_LD_template.r' script performs a genome-wide search for linkage isequilibrium (LD) based on the distribution of alleles at biallelic polymorphic sites (SNPs) in a multiple sequence alignment.
-It mainly rely on linkageDesequilibrium() and rollStats() functions in 'utils-phylo.r' module.
+The '[genome-wide_LD_template.r](https://github.com/flass/genomescans/blob/master/genome-wide_LD_template.r)' script performs a genome-wide search for linkage isequilibrium (LD) based on the distribution of alleles at biallelic polymorphic sites (SNPs) in a multiple sequence alignment.
+It mainly rely on linkageDesequilibrium() and rollStats() functions in '[utils-phylo.r](https://github.com/flass/genomescans/blob/master/utils-phylo.r)' module.
 
-Many options are available in 'genome-wide_LD_template.r' script and have to be specified by changing the values of several variables directly in the script;this includes the paths to the relevant input and output files. Here is a sample of them:
+Many options are available, and have to be specified by changing the values of several variables directly in the script;this includes the paths to the relevant input and output files. Here is a sample of them:
 
 ### environment variables
 ```R
