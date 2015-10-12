@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript --no-save --no-restore
+gi#!/usr/bin/Rscript --no-save --no-restore
 
 library('ape')
 library('RColorBrewer')
@@ -342,13 +342,14 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 	posr2pvals = as.data.frame(t(sapply(1:dim(siginfpairs)[1], function(i){
 		biali = siginfpairs[i,]
 		pos = bialraregap.i[biali]
+		refpos = map.full2ref[pos]
 	#~ 	r2 = lbial.ldr2[[biali[1]]][biali[2]]
 		r2 = bial.ldr2[biali[1], biali[2]][[1]]
 	#~ 	print(class(r2))
 		pval = 1-pchisq(m*r2, df=1)
 		qval = pval*matsize
 		printProgressUpperMatrix(i, dim(siginfpairs)[1], step=1000, initclock=starttime) 
-		return(c(pos, biali, r2, pval, qval))
+		return(c(refpos, pos, biali, r2, pval, qval))
 	#~ }, mc.cores=nbcores, mc.preschedule=T))))
 	})))
 	}else{
@@ -361,15 +362,17 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 	posr2pvals = as.data.frame(t(sapply(1:dim(siginfpairs)[1], function(i){
 		biali = siginfpairs[i,]
 		pos = bialraregap.i[biali]
+		refpos = map.full2ref[pos]
 		pval = bial.ldr2[biali[1], biali[2]][[1]]
 		qval = pval*matsize
 		printProgressUpperMatrix(i, dim(siginfpairs)[1], step=1000, initclock=starttime) 
-		return(c(pos, biali, pval, qval))
+		return(c(refpos, pos, biali, pval, qval))
 	#~ }, mc.cores=nbcores, mc.preschedule=T))))
 	})))
 	}
 	gc()
-	colnames(posr2pvals) = c('ref.pos.1', 'ref.pos.2', 'bial.pos.1', 'bial.pos.2', 'p.val', 'q.val')
+	colnames(posr2pvals) = c('ref.pos.1', 'ref.pos.2', 'aln.pos.1', 'aln.pos.2', 'bial.pos.1', 'bial.pos.2', 'p.val', 'q.val')
+	posr2pvals$site.dist = abs(posr2pvals$ref.pos.2 - posr2pvals$ref.pos.1)
 	write.table(posr2pvals, file=paste(resultdir, paste(sprintf("LD_%s", LDmetric), minalfrqset, siteset, ifelse(is.null(max.dist.ldr), 'whole-matrix', paste('maxdist', max.dist.ldr, sep='')), 'significant-pairs.tab', sep='.'), sep='/'))
 	# for all comparisons
 	if (LDmetric=='r2'){
@@ -385,19 +388,19 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 	save(matsize, posr2pvals, siginfpairs, allqvals, rangeqvals, freqqvals, file=nfsignifpairs)
 }
 # for only the significant comparisons
-intersitedist = abs(posr2pvals$ref.pos.2-posr2pvals$ref.pos.1)
-intersitedistclases = seq(from=0, to=floor(max(intersitedist/1000, na.rm=T)), by=1)
-qvalbyintersitedistclases = lapply(intersitedistclases, function(k){ log10(posr2pvals$q.val[intersitedist >= k*1000 & intersitedist < (k+1)*1000]) })
+intersitedist = posr2pvals$site.dist
+intersitedistclases = seq(from=0, to=floor(max(posr2pvals$site.dist/1000, na.rm=T)), by=1)
+qvalbyintersitedistclases = lapply(intersitedistclases, function(k){ log10(posr2pvals$q.val[posr2pvals$site.dist >= k*1000 & posr2pvals$site.dist < (k+1)*1000]) })
 names(qvalbyintersitedistclases) = sapply(intersitedistclases, function(k){ paste(k, k+1, sep='-') })
 #~ sitedistbyqvalclass = sapply(seq(from=floor(min(allqvals, na.rm=T)), to=floor(max(allqvals, na.rm=T)), by=0.5), function(k){ length(which(allqvals>=k & allqvals<k+0.5)) })
 
 pdf(file=paste(resultdir, paste(sprintf("LD_%s", LDmetric), minalfrqset, siteset, ifelse(is.null(max.dist.ldr), 'whole-matrix', paste('maxdist', max.dist.ldr, sep='')), 'significant-pairs.pdf', sep='.'), sep='/'), height=12, width=12)
 barplot(log10(freqqvals), names.arg=paste('[', rangeqvals, '; ', rangeqvals+0.5, ']', sep=''), ylim=c(0,10), las=2, xlab='log10(corrected p-values)', ylab='log10(frequency)',  cex.lab=1.5,main='Distribution of p-values of Fisher\'s exact test for LD significance')
-hist(intersitedist, breaks=(0:24)*10000, cex.lab=1.5, xlab='inter-site distance')
-plot(x=((1:100)/100), y=quantile(intersitedist, p=(1:100)/100), xlab='quantiles', ylab='inter-site distance',  cex.lab=1.5,main=sprintf('Cumulative distribution function of inter-site distances\nfor significantly linked site (p < %g after Bonferonni cor.)', threshpval))
+hist(posr2pvals$site.dist, breaks=(0:24)*10000, cex.lab=1.5, xlab='inter-site distance')
+plot(x=((1:100)/100), y=quantile(posr2pvals$site.dist, p=(1:100)/100), xlab='quantiles', ylab='inter-site distance',  cex.lab=1.5,main=sprintf('Cumulative distribution function of inter-site distances\nfor significantly linked site (p < %g after Bonferonni cor.)', threshpval))
 boxplot(qvalbyintersitedistclases, xlab='inter-site distance (kb)', ylab='log10(corrected p-values)', cex.lab=1.5, main='Distribution of significant p-values with site distance')
 #~ hist(log10(posr2pvals$q.val), breaks=101)
-#~ plot(log10(posr2pvals$q.val) ~ intersitedist)
+#~ plot(log10(posr2pvals$q.val) ~ posr2pvals$site.dist)
 dev.off()
 
 
