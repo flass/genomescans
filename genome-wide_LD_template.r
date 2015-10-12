@@ -33,6 +33,7 @@ reflabel = 'reflabel'	# label in the alignement of the strain to use for referen
 
 # define path to alignment file
 full.aln = read.dna('path/to/genome_alignment.fasta', format='fasta')
+minorallelefreqs = getMinorAlleleFreq(full.aln, multiproc=nbcores, consider.gaps.as.variant=FALSE)
 
 # compute correspondency between raw reference sequence and gapped alignement coordinates
 nfmap2ref = paste(resultdir, paste('coordinatesFullAln2Ref', 'RData', sep='.'), sep='/')
@@ -322,7 +323,8 @@ if (LDmetric=='r2'){
 
 threshpval = 0.05
 N = length(ref.bial.i)
-m = dim(full.aln)[1]
+m = dim(full.aln)[1] 
+
 nfsignifpairs = paste(resultdir, paste(sprintf("LD_%s", LDmetric), minalfrqset, siteset, ifelse(is.null(max.dist.ldr), 'whole-matrix', paste('maxdist', max.dist.ldr, sep='')), 'significant-sitepairspairs.RData', sep='.'), sep='/')
 if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 }else{
@@ -343,15 +345,17 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 		biali = siginfpairs[i,]
 		pos = bialraregap.i[biali]
 		refpos = map.full2ref[pos]
+		minfreqs = minorallelefreqs[pos]
 	#~ 	r2 = lbial.ldr2[[biali[1]]][biali[2]]
 		r2 = bial.ldr2[biali[1], biali[2]][[1]]
 	#~ 	print(class(r2))
 		pval = 1-pchisq(m*r2, df=1)
 		qval = pval*matsize
 		printProgressUpperMatrix(i, dim(siginfpairs)[1], step=1000, initclock=starttime) 
-		return(c(refpos, pos, biali, r2, pval, qval))
+		return(c(refpos, pos, biali, r2, minfreqs, pval, qval))
 	#~ }, mc.cores=nbcores, mc.preschedule=T))))
 	})))
+	colnames(posr2pvals) = c('ref.pos.1', 'ref.pos.2', 'aln.pos.1', 'aln.pos.2', 'bial.pos.1', 'bial.pos.2', 'r2', 'min.allele.freq.1', 'min.allele.freq.2', 'p.val', 'q.val')
 	}else{
 	## already get a p-value from using th Fisher exact test (recomended)
 	siginfpairs = which(bial.ldr2*matsize < threshpval, arr.ind=T)
@@ -362,16 +366,17 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 	posr2pvals = as.data.frame(t(sapply(1:dim(siginfpairs)[1], function(i){
 		biali = siginfpairs[i,]
 		pos = bialraregap.i[biali]
+		minfreqs = minorallelefreqs[pos]
 		refpos = map.full2ref[pos]
 		pval = bial.ldr2[biali[1], biali[2]][[1]]
 		qval = pval*matsize
 		printProgressUpperMatrix(i, dim(siginfpairs)[1], step=1000, initclock=starttime) 
-		return(c(refpos, pos, biali, pval, qval))
+		return(c(refpos, pos, biali, minfreqs, pval, qval))
 	#~ }, mc.cores=nbcores, mc.preschedule=T))))
 	})))
+	colnames(posr2pvals) = c('ref.pos.1', 'ref.pos.2', 'aln.pos.1', 'aln.pos.2', 'bial.pos.1', 'bial.pos.2', 'min.allele.freq.1', 'min.allele.freq.2', 'p.val', 'q.val')
 	}
 	gc()
-	colnames(posr2pvals) = c('ref.pos.1', 'ref.pos.2', 'aln.pos.1', 'aln.pos.2', 'bial.pos.1', 'bial.pos.2', 'p.val', 'q.val')
 	posr2pvals$site.dist = abs(posr2pvals$ref.pos.2 - posr2pvals$ref.pos.1)
 	write.table(posr2pvals, file=paste(resultdir, paste(sprintf("LD_%s", LDmetric), minalfrqset, siteset, ifelse(is.null(max.dist.ldr), 'whole-matrix', paste('maxdist', max.dist.ldr, sep='')), 'significant-pairs.tab', sep='.'), sep='/'))
 	# for all comparisons
