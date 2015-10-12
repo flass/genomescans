@@ -1,4 +1,4 @@
-gi#!/usr/bin/Rscript --no-save --no-restore
+#!/usr/bin/Rscript --no-save --no-restore
 
 library('ape')
 library('RColorBrewer')
