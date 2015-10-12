@@ -388,7 +388,6 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 	save(matsize, posr2pvals, siginfpairs, allqvals, rangeqvals, freqqvals, file=nfsignifpairs)
 }
 # for only the significant comparisons
-intersitedist = posr2pvals$site.dist
 intersitedistclases = seq(from=0, to=floor(max(posr2pvals$site.dist/1000, na.rm=T)), by=1)
 qvalbyintersitedistclases = lapply(intersitedistclases, function(k){ log10(posr2pvals$q.val[posr2pvals$site.dist >= k*1000 & posr2pvals$site.dist < (k+1)*1000]) })
 names(qvalbyintersitedistclases) = sapply(intersitedistclases, function(k){ paste(k, k+1, sep='-') })
