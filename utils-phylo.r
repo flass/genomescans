@@ -397,6 +397,15 @@ getParsInformIndexes = function(aln, as.logical=FALSE, consider.gaps.as.variant=
 	}else{ return(which(nonsinglepolymorphic)) }
 }
 
+getMinorAlleleFreq = function(aln, consider.gaps.as.variant=FALSE, multiproc=1){ 
+	mincount = simplify2array(mclapply(1:dim(aln)[2], function(j){
+		statecounts = table(base.freq(aln[,j], freq=T, all=consider.gaps.as.variant))
+		# first term captures biallelic site with sufficient minor allele frequency
+		return(min(statecounts))
+	}, mc.cores=multiproc, mc.preschedule=TRUE))
+	return(mincount)
+}
+
 getBiAllelicIndexes = function(aln, as.logical=FALSE, minallelefreq=NULL, nonsingle=FALSE, consider.gaps.as.variant=FALSE, multiproc=1){
 	if (nonsingle==TRUE | (!is.null(minallelefreq) && minallelefreq>1)){ print('not considering singletons/rare alleles') }
 	if (is.null(minallelefreq)){ minoccur = as.integer(nonsingle) + 1 
