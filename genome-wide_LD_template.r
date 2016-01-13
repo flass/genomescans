@@ -105,7 +105,7 @@ if (file.exists(nfldr)){
 		# !!! very big memory use (ex : for 42 strains * with ~10,000 biallelic SNPs: >20Gb Mem)
 		# !!! use of parallism lead to big overhead, probably due to hidden duplication of the (gigantic) data matrix ; code may be optimized, but could not find the way yet. if possible, run with nbcores=1
 		# or do it, just use a high memeory machine; 100G free mem to run 16 cores over a 20,000 alignment sites works OK
-		lbial.ldr2 = linkageDesequilibrium(as.character(bial.aln), LDmetric, gapchar=gapchars, multiproc=nbcores, max.dist=max.dist.ldr, discard.gaps=TRUE, mem.light=TRUE, upper.triangular=FALSE)
+		lbial.ldr2 = linkageDisequilibrium(as.character(bial.aln), LDmetric, gapchar=gapchars, multiproc=nbcores, max.dist=max.dist.ldr, discard.gaps=TRUE, mem.light=TRUE, upper.triangular=FALSE)
 		gc()
 		# temporary save
 		save(lbial.ldr2, file=nfldrtmp)

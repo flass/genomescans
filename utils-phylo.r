@@ -154,7 +154,7 @@ conditionalMatrixIndexes = function(matdim, fun, multiproc=1, ...){
 	}
 }
 
-linkageDesequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1, verbose=FALSE, quiet=FALSE, max.dist=NULL, mem.light=FALSE, upper.triangular=TRUE, full.matrix=FALSE, gapchar=c('-')){
+linkageDisequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1, verbose=FALSE, quiet=FALSE, max.dist=NULL, mem.light=FALSE, upper.triangular=TRUE, full.matrix=FALSE, gapchar=c('-')){
 	# assumes that the input alignment contains only bi-allelic sites ; other kind of variation will infringe assumptions for computations LD metrics, and likely yield abberant results (e.g. off [0;1] interval)
 	# NB: gaps are natively treated as a distinct character ; if 'discard.gaps' is set to TRUE, gap-containg rows of the alignment at both considered sites will be discarded and computations will be done on the remaining rows.
 	# return a numeric.matrix by default, but can rather return a list if 'mem.light' is set to TRUE, where every list element cover a row of the matrix, discarding all cells that were not computed because off the specified range (and would come as NA values in the matrix output)
@@ -324,11 +324,11 @@ exponentialDecay = function(ldmat, pos, max.dist=1000, multiproc=1, quiet=FALSE,
 			pwld = ldi[max(1, floor((length(ldi)-k)/2)):min(length(ldi), floor((length(ldi)+k)/2))]
 		}else{
 			if (format=='upper'){
-				# assumes the matrix to be upper triangular, as outpued by linkageDesequilibrium()
+				# assumes the matrix to be upper triangular, as outpued by linkageDisequilibrium()
 				if (i>1) v = ldmat[max(i-k,1):(i-1),i] else v = numeric()
 				if (i<N) w = ldmat[i,(i+1):min(i+k,N)] else w = numeric()
 			}else{ if (format=='lower'){
-				# assumes the matrix to be lower triangular, as outpued by linkageDesequilibrium()
+				# assumes the matrix to be lower triangular, as outpued by linkageDisequilibrium()
 				if (i>1) v = ldmat[max(i-k,1):(i-1),i] else v = numeric()
 				if (i<N) w = ldmat[i,(i+1):min(i+k,N)] else w = numeric()
 			}else{stop('wrong format')}}
@@ -652,7 +652,7 @@ rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measur
 			}else{ if (measure=="gapdens"){ 			result = gapDensity(subaln)
 			}else{ if (measure=="distvar"){ 			result = var(d, na.rm=TRUE)
 			}else{ if (substring(measure, 1,2)=="LD"){  if ( ctrl.subalnsize & subalnsize==subsize ){
-															result = mean(linkageDesequilibrium(as.character(subaln), metric=substring(measure, 3),
+															result = mean(linkageDisequilibrium(as.character(subaln), metric=substring(measure, 3),
 														 discard.gaps=FALSE, multiproc=1, quiet=TRUE), na.rm=TRUE)
 														}else{ result = NA }
 			}else{ if (measure=="PHI"){					if ( ctrl.subalnsize & subalnsize==subsize ){
