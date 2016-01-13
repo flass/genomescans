@@ -1,10 +1,10 @@
-#!/usr/bin/Rq
+#!/usr/bin/R
 #~ library('seqinr')
 library('ape')
 #~ library('pegas')
 library('parallel')
 #~ library('RColorBrewer')
-
+library('phangorn')
 
 ### Misc
 printProgressUpperMatrix = function(i, N, step=1000, initclock=FALSE){
@@ -164,7 +164,8 @@ linkageDesequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1
 	retr2 = (metric=="r2")
 	retrho = (metric=="rho")
 	retfi = (metric=="Fisher")
-	if (!any(retD, retDp, retr, retr2, retrho, retfi)){ stop(paste('a wrong metric "', metric, '" was provided ; correct metrics are "D", "D\'", "r" "r2", "rho" or "Fisher"', sep='')) }
+	retcompat = (metric=="compat")
+	if (!any(retD, retDp, retr, retr2, retrho, retfi, retcompat)){ stop(paste('a wrong metric "', metric, '" was provided ; correct metrics are "D", "D\'", "r" "r2", "rho", "Fisher" or "compat"', sep='')) }
 	M = dim(aln)[1]
 	N = dim(aln)[2]
 	if (full.matrix){
@@ -184,7 +185,7 @@ linkageDesequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1
 			si = aln[,i]
 			ti = table(si)
 			stopifnot(length(ti==2) & sum(ti)==m)	# asserts that there is 2 and only 2 alleles, which frequencies sum to the total
-			ps = table(ti)/m
+			ps = ti/m
 			p1 = ps[1]
 			p2 = ps[2]
 			A1 = names(p1)
@@ -223,7 +224,11 @@ linkageDesequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1
 				xs = table(h)/m
 				A1B1 = paste(A1, B1)
 				x11 = xs[A1B1]
-				if (retfi){
+				if (retcompat){
+					# four-gamete test ; return boolean stating sites are compatible (1) or not (0)
+#~ 					return(as.integrer( 0 %in% xs ))
+					return( 0 %in% xs ) # logical format, more compact
+				}else{ if (retfi){
 					tcont = matrix(table(h), 2, 2)
 #~ 					print(tcont)
 					Fpval = fisher.test(tcont)$p.value
@@ -261,7 +266,7 @@ linkageDesequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1
 					rho = D/(p1*q2)
 					return(rho)
 				}else{ stop("undetermined return value")	
-				}}}}}
+				}}}}}}
 			}
 		})
 #~ 		if (is.list(sitecomp)){
@@ -583,8 +588,20 @@ fixwidthWindowSubsampleSites = function(alnrange, siteindexes, maxsize, distribu
 	}
 }
 
+callPhi = function(aln, alnname, phiwindow=10, phipackpath="~/Programs/PhiPack/Phi", tempdirpath="~/tmp"){ 
+	nfaln = sprintf("%s/%s", tempdirpath, alnname)
+	write.dna(aln, file=nfaln, format='fasta')
+	phicall = sprintf("%s -w %d -f %s -v", phipackpath, phiwindow, nfaln)
+	phiout = system(phicall, intern=TRUE)
+	phistat =as.numeric(substring(phiout[length(phiout)-9], 15, 25))
+	phipval = as.numeric(substring(phiout[length(phiout)-1], 15))
+	unlink(nfaln)
+	return(c(phistat, phipval))
+}
 
-rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measures=c("nucdiv", "gapdens"), fun.usedist=list(), fun.userange=list(), fun.res=list(), dist.model='raw', rmAbsSeq=FALSE, propgap=0.35, relpropgap=10, subsample=NULL, multiproc=1, quiet=FALSE){	#, measures=c("distvar", "gapdens", "nucdiv")
+reportsnpdens = function(alnrange){ length(alnrange) }
+
+rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measures=c("nucdiv", "gapdens"), fun.usedist=list(), fun.userange=list(), fun.res=list(), dist.model='raw', rmAbsSeq=FALSE, propgap=0.35, relpropgap=10, subsample=NULL, alnname='aln', ctrl.subalnsize=FALSE, multiproc=1, quiet=FALSE){	#, measures=c("distvar", "gapdens", "nucdiv")
 	stopifnot(is.character(measures))
 	starttime = Sys.time()
 	for (measure in measures){
@@ -607,10 +624,11 @@ rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measur
 		alnrange = a:b
 		if (!is.null(subsample)){
 			# expects a list with component `$sites` (a vector of integers, indexes of sites in the full alignment) and `$maxsize` (an integer, maximum number of site to sample per window)
+			subsize = subsample$maxsize
 			alnrange = fixwidthWindowSubsampleSites(alnrange, subsample$sites, subsample$maxsize, distribute=T)
-#~ 			print(alnrange)
-		}
+		}else{ subsize = windowsize }
 		subaln = aln[, alnrange]
+		subalnsize = dim(subaln)[2]
 		if (rmAbsSeq){
 			rmseq = which(absentSeq(subaln, propgap=propgap, relpropgap=relpropgap))
 			if (length(rmseq)>0) subaln = subaln[-rmseq, ]
@@ -619,12 +637,51 @@ rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measur
 			dd = distfun(subaln, dist.model, pairwise.deletion=TRUE)
 			d = dd[!is.na(dd)]
 		}
+		if (("chisq.spacing.sites" %in% measures) | ("wilcox.all.site.dist" %in% measures)){
+			# expected spacing of (subsampled) sites under uniformity
+			expspacing = windowsize/subsize
+			# expected distribution of (subsampled) sites under uniformity
+			expindexs = seq(0, windowsize, length.out=subsize)
+			# expected distribution distances under uniform spacing of (subsampled) sites (upper triangular matrix of inter-site distances)
+			expalldist = unlist(sapply(1:(subsize-1), function(i){ sapply((i+1):subsize, function(j){ expindexs[j] - expindexs[1] }) }))
+		}
+#~ 		print(subaln)
 		results = sapply(measures, function(measure){
+#~ 			print(measure)
 			if (measure=="nucdiv"){         			result = pegas::nuc.div(subaln, pairwise.deletion=TRUE)
 			}else{ if (measure=="gapdens"){ 			result = gapDensity(subaln)
 			}else{ if (measure=="distvar"){ 			result = var(d, na.rm=TRUE)
-			}else{ if (substring(measure, 1,2)=="LD"){  result = mean(linkageDesequilibrium(subaln, metric=substring(measure, 3),
+			}else{ if (substring(measure, 1,2)=="LD"){  if ( ctrl.subalnsize & subalnsize==subsize ){
+															result = mean(linkageDesequilibrium(as.character(subaln), metric=substring(measure, 3),
 														 discard.gaps=FALSE, multiproc=1, quiet=TRUE), na.rm=TRUE)
+														}else{ result = NA }
+			}else{ if (measure=="PHI"){					if ( ctrl.subalnsize & subalnsize==subsize ){
+															result = callPhi(subaln, sprintf("%s_%d-%d.fas", alnname, a, b), as.integer(subsize/10))
+														}else{ result = rep(NA, 2) }
+														names(result) = c('statistic', 'p.value')
+			}else{ if (measure=="pscore"){				if ( ctrl.subalnsize & subalnsize==subsize ){
+															pdaln = phyDat(subaln)
+															# avoid printing the advance of parsimony search
+															sink('/dev/null')
+															ptree = pratchet(data=pdaln, maxit=100)
+															# stop sinking
+															sink(NULL)
+															result = parsimony(ptree, pdaln)
+														}else{ result = NA }
+			}else{ if (measure=="chisq.spacing.sites"){
+														# measure the departure of consecutive site spacing from uniformity
+														if ( ctrl.subalnsize & !is.null(subsample) & subalnsize==subsize ){
+															obsspacing = sapply(2:length(alnrange), function(i){alnrange[i] - alnrange[i-1]})
+															chisqdeviates = sapply(obsspacing, function(x){ (x - expspacing)^2 / expspacing })
+															result = sum(chisqdeviates) / subalnsize
+														}else{ result = NA }
+			}else{ if (measure=="wilcox.all.site.dist"){
+														# test the difference of distribution of all inter-site distances between observed and expected under uniform (subsampled) site spacing 
+														if ( ctrl.subalnsize & !is.null(subsample) & subalnsize==subsize ){
+															centerindexes = alnrange - min(alnrange)
+															obsalldist = unlist(sapply(1:(subalnsize-1), function(i){ sapply((i+1):subalnsize, function(j){ centerindexes[j] - centerindexes[1] }) }))
+															result = unlist(wilcox.test(obsalldist, expalldist)[c('statistic', 'p.value')])
+														}else{ result = rep(NA, 2) ; names(result) = c('statistic.W', 'p.value')}
 			}else{ 
 				if (!is.null(fun)){ 
 					measfun = fun 
@@ -641,12 +698,22 @@ rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measur
 				res = measfun(indata)
 				if (measure %in% names(fun.res)){ result = res[[fun.res[[measure]]]]
 				}else{ result = res }
-			}}}}
+			}}}}}}}}
 			return(result)			
 		})
 		if (is.list(results)){
 			results = c(results, recursive=T)
 			measnames = names(results)
+#~ 			print(results)
+#~ 			print('')
+#~ 			measnames = character()
+#~ 			for (i in length(results)){
+#~ 				if ( !is.null(names(results[[i]])) ){
+#~ 					measnames = c(measnames, paste(names(results)[i], names(results[[i]])))
+#~ 				}else{
+#~ 					measnames = c(measnames, names(results)[i])
+#~ 				}
+#~ 			}
 		}else{ if (is.matrix(results) | is.data.frame(results)){
 			stopifnot(1 %in% dim(results))
 			d = which(dim(results)==1)[1]
@@ -655,6 +722,7 @@ rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measur
 			}else{ results = as.vector(results[,1]) }	
 		}else{ measnames = measures }}
 #~ 		print(results)
+#~ 		print(measnames)
 		stopifnot(is.vector(results), length(results)==length(measnames))
 		names(results) = measnames
 		return(results)
