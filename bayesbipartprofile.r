@@ -3,13 +3,35 @@ library(ade4)
 library(RColorBrewer)
 library(gplots)
 
+options(width = 120)
+
 minsizclades = 3
 
 homedir = Sys.getenv()['HOME']
 
 source(paste(homedir, 'scripts/misc/utils-phylo.r', sep='/'))
 
+printinfomatrix = function(m){
+	mname = deparse(substitute(m))
+	print(sprintf("class(%s): %s ; dim(%s): %s", mname, class(m), mname, paste(dim(m), collapse=', ')), quote=F)
+	print(sprintf("colnames(%s):", mname), quote=F)
+	print(colnames(m))
+}
+
 carg = commandArgs(trailingOnly=TRUE)
+ordtag = '--gene.list.is.ordered'
+ordgenelist = ordtag %in% carg
+if (ordgenelist){
+	print("# gene list is provided in the genome order; will not reorder it", quote=F)
+	carg = carg[-which(carg==ordtag)]
+}
+newtag = '--new'
+recompute = newtag %in% carg
+if (recompute){
+	print("# ignore formerly saved data archive and recompute all matrices", quote=F)
+	carg = carg[-which(carg==newtag)]
+}
+print(c("# arguments:", carg), quote=F)
 dircladeprofile = carg[1]
 print(paste('read data in', dircladeprofile))
 if (length(carg)>1){
@@ -21,7 +43,6 @@ if (length(carg)>2){
 if (length(carg)>3){
 	focal.strains = strsplit(carg[4], split=',')[[1]]
 }else{ focal.strains = NULL }
-
 
 # bipart description
 dbbiparts = read.table(paste(dircladeprofile, 'bipart_db.tab', sep='/'), h=T, colClasses=c('character', rep('numeric', 4)))
@@ -37,21 +58,27 @@ ltax = scan(paste(dircladeprofile, 'taxlabels', sep='/'), what='character')
 nrbiparts = as.numeric(rownames(patbiparts))
 
 nfglist = paste(dircladeprofile, 'screened_gene_list.txt', sep='/')
-if (file.exists(nfglist)){
-	genenames = readLines(nfglist)
+if (!recompute & file.exists(nfglist)){
+	genenames = gsub('-', '.', readLines(nfglist))
 }else{
 	genenames = gsub('\\.', '-', colnames(patbiparts))
 }
-genecoords = as.data.frame(t(sapply(genenames, function(x){ as.numeric(strsplit(strsplit(x, split='_')[[1]][2], split='-')[[1]]) })))
-genecoordorder = order(genecoords[,1])
-genenames = genenames[genecoordorder]
-PPbiparts = PPbiparts[,genecoordorder]
+if (!ordgenelist){
+	genecoords = as.data.frame(t(sapply(genenames, function(x){ as.numeric(strsplit(strsplit(x, split='_')[[1]][2], split='-')[[1]]) })))
+	genecoordorder = order(genecoords[,1])
+	genenames = genenames[genecoordorder]
+	PPbiparts = PPbiparts[,genecoordorder]
+}
+print("genenames:", quote=F)
+print(genenames, quote=F)
 
-#~ print(genenames)
+# make short gene names
 
-#~ # make short gene names
-#~ gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][1] })
-gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][3] })
+## may have to tweak this to parse correctly gene names, depending on their format
+
+gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][1] })
+#~ gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][3] })
+#~ print(gnames)
 gcount = table(gnames)
 #~ for (g in names(gcount)[gcount>1]){
 for (g in names(gcount)){
@@ -66,7 +93,7 @@ for (g in names(gcount)){
 #~ gnames = genenames
 rownames(dbbiparts) = paste('c', dbbiparts$bipart, sep='')
 colnames(patbiparts) = colnames(PPbiparts) = as.vector(gnames[genenames])
-print(colnames(PPbiparts))
+printinfomatrix(PPbiparts)
 patbiparts.bin = !apply(patbiparts, 2, is.na)
 cnrbiparts = rownames(patbiparts.bin) = rownames(patbiparts) = rownames(PPbiparts) = paste('c', nrbiparts, sep='')
 
@@ -80,10 +107,11 @@ bipconsabspres = sapply(as.vector(genenames), function(g){as.numeric(nrbiparts %
 colnames(bipconsabspres) = as.vector(gnames[genenames])
 consabspresPPbiparts = bipconsabspres + PPbiparts
 rownames(consabspresPPbiparts) = rownames(PPbiparts)
-print(c('consabspresPPbiparts', dim(consabspresPPbiparts)))
+colnames(consabspresPPbiparts) = colnames(PPbiparts)
+printinfomatrix(consabspresPPbiparts)
 
 nfmatcompbip = paste(dircladeprofile, 'bipartition_compatibility_matrix.RData', sep='/')
-if (file.exists(nfmatcompbip)){ load(nfmatcompbip)
+if (!recompute & file.exists(nfmatcompbip)){ load(nfmatcompbip)
 }else{
 	# matrix of compatible biparts
 	bipinPPmat = which(paste('c', dbbiparts$bipart, sep='') %in% rownames(PPbiparts))
@@ -96,22 +124,24 @@ if (file.exists(nfmatcompbip)){ load(nfmatcompbip)
 # matrix of probability of rejection of one bipartiton in one gene
 # = the maximal posterior probability in a gene of all bipartitions uncompatible with the focal bipartition
 nfcompPPbip = paste(dircladeprofile, 'bipart_Compat.tab', sep='/')
-if (file.exists(nfcompPPbip)){ compPPbiparts = read.table(nfcompPPbip)
+if (!recompute & file.exists(nfcompPPbip)){ compPPbiparts = read.table(nfcompPPbip)
 }else{
-	rejPPbiparts = t(sapply(rownames(PPbiparts), function(b){
+	rejPPbiparts = data.matrix(t(sapply(rownames(PPbiparts), function(b){
 		uncompbip = colnames(matcompbip)[!matcompbip[b,]]
-	#~ 	print(length(which(!matcompbip[b,])))
 		sapply(colnames(PPbiparts), function(g){
 			max(c(0, PPbiparts[uncompbip,g]), na.rm=T)
 		})
-	}))
+	})))
 	compPPbiparts = 1 - rejPPbiparts
+	colnames(compPPbiparts) = as.vector(gnames[genenames])
 	write.table(compPPbiparts, file=nfcompPPbip, row.names=T, sep='\t')
 }
-print(c('compPPbiparts', class(compPPbiparts), dim(compPPbiparts)))
+printinfomatrix(compPPbiparts)
+# combine compatibilty measure with presence/absence of biparts in consensus tree
 consabsprescompPPbiparts = bipconsabspres + compPPbiparts
 rownames(consabsprescompPPbiparts) = rownames(compPPbiparts)
-print(c('consabsprescompPPbiparts', dim(consabsprescompPPbiparts)))
+colnames(consabsprescompPPbiparts) = colnames(compPPbiparts)
+printinfomatrix(consabsprescompPPbiparts)
 
 
 plotHeatMapBipartGenomeDensity = function(mat, bip.filter=NULL, gene.filter=NULL, gene.names=gnames, main=NULL, mark.consensus.bipart=NULL,
@@ -139,11 +169,9 @@ plotHeatMapBipartGenomeDensity = function(mat, bip.filter=NULL, gene.filter=NULL
 	if (!is.null(minPPamonggenes)){ minprofile = apply(mat[,gf], 1, function(x){ any(x>minPPamonggenes, na.rm=T) })
 	}else{ minprofile = rep(TRUE, dim(mat)[1]) }
 	B = denseprofile & minprofile & bf
-#~ 	print(bipdensity[B])
 	
 	denscols = c("#FFFFFF", brewer.pal(9, 'Reds'))
 	mindens = min(min(bipdensity[B], na.rm=T), 0, na.rm=T)
-#~ 	print(geneinfo)
 	
 	ngenecol = 5
 	geneinfo = apply(mat[B,gf], 2, densfun)
@@ -172,7 +200,7 @@ plotHeatMapBipartGenomeDensity = function(mat, bip.filter=NULL, gene.filter=NULL
 	
 	heatmapfun = get(heatmapengine, inherits=T)
 	print(dim(m[B,gf]))
-	heatmapfun(m[B,gf], Rowv=dendrobip, Colv=NA, revC=(heatmapengine=='heatmap' & !dendro.dist.bips), scale='none', col=bipcols, labCol=gene.names[gf], na.color=col.na, labRow=lR,
+	heatmapfun(data.matrix(m[B,gf]), Rowv=dendrobip, Colv=NA, revC=(heatmapengine=='heatmap' & !dendro.dist.bips), scale='none', col=bipcols, labCol=gene.names[gf], na.color=col.na, labRow=lR,
 	 main=main, xlab="Loci", ylab=ylabel, cex.main=2, cex.lab=2,
 	 trace='none', dendrogram='none')
 #~ 	 RowSideColors=bipdenscols, ColSideColors=geneinfocols,
@@ -180,23 +208,23 @@ plotHeatMapBipartGenomeDensity = function(mat, bip.filter=NULL, gene.filter=NULL
 
 plotHMBGDbyGenes = function(lPPB, lcabPPB, cherries, cherrylabs, gene.filter=NULL, focus.strains=NULL){
 for (nlPPb in names(lPPb)){
-		m = paste(nlPPb, 'of bipartitions across genes')
+		mainlab = paste(nlPPb, 'of bipartitions across genes')
 		# 2-strain clades ("cherries")
-		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(m, "(strain pairs)"),
+		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(mainlab, "(strain pairs)"),
 		 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1)
 		# 2-strain clades ("cherries") with strain names
-		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(m, "(strain pairs)"),
+		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(mainlab, "(strain pairs)"),
 		 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1, lab.bip=sapply(cherrylabs, paste, collapse=', '))
 		if (!is.null(focus.strains)){
 			for (fs in focus.strains){
 				fsi = sapply(cherrylabs, function(x){ fs %in% x })
-				plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=(cherries & fsi), gene.names=gnames[genenames], main=paste(m, " (strain pairs with ", fs,")", sep=''),
+				plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=(cherries & fsi), gene.names=gnames[genenames], main=paste(mainlab, " (strain pairs with ", fs,")", sep=''),
 				 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1, lab.bip=sapply(cherrylabs, paste, collapse='\n'))
 			}
 		}
 		 
 		# "larger" clades
-		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=largeclades, gene.names=gnames[genenames], main=paste(m, "(clades of >= 3 strains)"), mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1)
+		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=largeclades, gene.names=gnames[genenames], main=paste(mainlab, "(clades of >= 3 strains)"), mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1)
 	}
 }
 # PP support of bipartition accross genes
@@ -216,9 +244,9 @@ write.table(dbbips[,c('bipart', 'labels')], file=paste(dircladeprofile, 'bipart_
 
 pdf(paste(dircladeprofile, 'bipart-profile.pdf', sep='/'), width=20, height=20)
 
-## PP support
+	## PP support
 lPPb = list(PPbiparts, compPPbiparts) ; names(lPPb) = c('Support', 'Compatibility')
-## compatibility = 1 - PP support against the bipartition
+	## compatibility = 1 - PP support against the bipartition
 lcabPPb = list(consabspresPPbiparts, consabsprescompPPbiparts) ; names(lcabPPb) = c('Support', 'Compatibility')
 ## all genes
 plotHMBGDbyGenes(lPPB, lcabPPB, cherries, cherrylabs, focus.strains=focal.strains)

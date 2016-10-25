@@ -5,6 +5,7 @@ import numpy
 from bitarray import bitarray
 from itertools import product
 import cPickle
+import re
 
 ##### bipartition manipulation functions
 
@@ -61,6 +62,10 @@ def parseMrBayesParts(nfparts, dnump={}, decreasing=True, returnNum=False, ltax=
 	"""
 	dbipnum = {} # 
 	with open(nfparts, 'r') as fparts:
+		#~ header = fparts.readline() #discard header
+		#~ if header.startswith('[ID: '):
+			#~ header = fparts.readline()
+			#~ print 'there', header
 		nline = 0
 		nID = 0
 		for line in fparts:
@@ -72,13 +77,23 @@ def parseMrBayesParts(nfparts, dnump={}, decreasing=True, returnNum=False, ltax=
 			lsp = line.strip('\n').split()
 			num = int(lsp[0])
 			inbip = lsp[1]
+			#~ if remtaxset:
+				#~ for i in remtaxset:
+					#~ # del inbip[i]
+					#~ inbip = inbip[:i]+inbip[i+1:]
+			#~ print len(inbip),
+			# potentialy complement the input pattern with all possible combination of patterns for missing taxa
+			# !! by convention, missing taxa are added at the end of binary string ; this must be done before transposition of order through dtaxorder
+			#~ print len(inbip),
 			bipps = [inbip+''.join(p) for p in product([s, d], repeat=len(compltaxset))]
 			nbipp = 0
 			for bipp in bipps:
 				nbipp += 1
 				if remtaxset:
 					for i in remtaxset:
+						#~ del inbip[i]
 						bipp = bipp[:i]+bipp[i+1:]
+				#~ print len(bipp)
 				if not dtaxorder:
 					bip = bipp
 				else:
@@ -87,12 +102,36 @@ def parseMrBayesParts(nfparts, dnump={}, decreasing=True, returnNum=False, ltax=
 					pos.sort()
 					for i in pos:
 						bip += bipp[dtaxorder[i]]
+						#~ if ltax and verbose: print ltax[dtaxorder[i]],
+					#~ else:
+						#~ if ltax and verbose: print ''
 						
 				bipat = codeBipartProfile(bip, asStr=True, s=s, d=d)
-
+				#~ if bipat=='0010111111001010010110011101011111100100011110000011000111000000011001000000000000111010001001101101100101111111111100110101111001111000001010':
+					#~ print 'here1', nbipp, nline
+					#~ print bipat
+					#~ print bipp
+					#~ print num
+					#~ print dnump.get(num, 'leaf')
+					#~ if len(bipps) > 1:
+						#~ print "several potentail bipartitions recorded due to missing taxa"
+						#~ print '\n'.join(bipps)
+				#~ if bipat=='0010111111001010010110011101011111100100011110000011000011000000011001000000000000111010001001101101100101111111111100110101111001111000001010':
+					#~ print 'there0', nbipp, nline
+					#~ print bipat
+					#~ print bipp
+					#~ print num
+					#~ print dnump.get(num, 'leaf')
+					#~ if len(bipps) > 1:
+						#~ print "several potentail bipartitions recorded due to missing taxa"
+						#~ print '\n'.join(bipps)
+					#~ raise IndexError
+				#~ print sys.getsizeof(bipat)	# for 55 taxa, 112 bytes with bitarray storage vs. 496 bytes with tuples of bolean
 				if dnump:
 					if bipat.count('1')>1:
 						if num not in dnump:
+							#~ if decreasing: break
+							#~ else: continue
 							continue
 						p = dnump[num]
 					else:
@@ -104,7 +143,7 @@ def parseMrBayesParts(nfparts, dnump={}, decreasing=True, returnNum=False, ltax=
 	return dbipnum
 
 #### distance functions
-# uner the hypothesis that there are a (in)finite(?) number of differentiated clusters of strains / sequence types that recombine
+# under the hypothesis that there are a (in)finite(?) number of differentiated clusters of strains / sequence types that recombine
 # among each other, converting one strain sequence type into another type at a gene / genome segment,
 # this happenning much more frequently than the strain within cluster diverge,
 # the distance between clades (or more practically bipartitions) observed in two different gene trees can be interpreted as the
@@ -157,6 +196,11 @@ def weightedBipartDist(bip1, bip2, dbipartingenes, ngene1, ngene2):
 	Pb2g2 = dbipartingenes.get(ngene2, {}).get(bip2, 0)	# bipart b2 found in consensus tree of gene g2
 	wb1 = (Pb1g1 / Pb2g1) # decreasing when b2 was also possibly found in g1, and if b1 was not that sure in g1
 	wb2 = (Pb2g2 / Pb1g2)
+	
+	#~ 
+#~ def bipartMatchingFuzziness(b, LB, ntaxa=ntaxa):
+	#return (sum([ fuzziness(b, B) for B in LB ]) / len(LB))
+	#~ return (sum([ bitwiseBipartDist(b, B) for B in LB if b and B]) / len(LB))
 
 #### representation functions
 
@@ -239,7 +283,7 @@ def indexConsGeneTreeBipart(bip, num, dbipartsnum, dnumbiparts, ngene, cit, dbip
 	return num
 
 
-def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bipartdistthresh, ltaxall=None, aliases='', useallgenes=False, removetrailing=False, indata=None, verbose=False):
+def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bipartdistthresh, ltaxall=None, aliases='', useallgenes=False, removetrailing=False, namesubstrpat=None, indata=None, verbose=False):
 	
 	if not indata:
 		dbipartsnum = {}
@@ -262,6 +306,8 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 		else: print "ltaxall: %d taxa, ['%s', ...]"%(len(ltaxall), "', '".join(ltaxall[:5]))
 	else:
 		print "no input taxon list"
+	if namesubstrpat:
+		print "retain only matches to regex pattern \"%s\" in sequence names"%namesubstrpat
 	
 	lnfbayesresults = os.listdir(dirbayesresults)
 	with open(nflngenes, 'r') as flngenes:
@@ -289,7 +335,14 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 		dnexconstree = tree2.read_nexus("%s/%s"%(dirbayesresults, nfconstree), returnDict=True, allLower=False)
 		genetree = dnexconstree['tree']['con_50_majrule']
 		#~ ltax = dnexconstree['taxlabels']
-		if removetrailing:
+		if namesubstrpat:
+			### retain only matches input regex pattern in sequence names; no match will lead to an error; only the first of several match is used
+			# from mrbayes reference
+			ltax = [re.findall(namesubstrpat, lab)[0] for lab in dnexconstree['taxlabels']]
+			# from gene trees
+			for leaf in genetree.get_leaves():
+				leaf.edit_label(re.findall(namesubstrpat, leaf.label())[0])
+		elif removetrailing:
 			### remove trailing gene name in sequence names
 			# of mrbayes reference
 			ltax = [lab.split('_')[0] for lab in dnexconstree['taxlabels']]
@@ -335,7 +388,9 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 				print 'skip gene', ngene
 				excludedgenes.append(ngene)
 				continue
-				
+					
+			#~ print dtaxorder
+			#~ raise IndexError, "different taxonomic orders between genes:\nref: %s (%d)\n%s:%s (%d)"%(str(ltaxall), len(ltaxall), ngene, str(ltax), len(ltax))
 		if verbose:
 			print "compltaxset: %s"%repr([ltaxall[dtaxorder[i]] for i in compltaxset])
 			if len(compltaxset)>0:
@@ -344,11 +399,13 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 		
 		# get post. prob of biparts
 		nftstat = getFileNameFromPat(lnfgenebayesresults, '.tstat', nbmatch=1)[0]
+		#~ print "%s/%s"%(dirbayesresults, nftstat)
 		dnump = parseMrBayesTstat("%s/%s"%(dirbayesresults, nftstat), bsthreshsampbip)
 		# get binary coding of taxonomic profile representation of bipartitions
 		nfparts = getFileNameFromPat(lnfgenebayesresults, '.parts', nbmatch=1)[0]
 		dbippp = parseMrBayesParts("%s/%s"%(dirbayesresults, nfparts), dnump=dnump, dtaxorder=dtaxorder, ltax=ltax, compltaxset=compltaxset, remtaxset=remtaxset, verbose=verbose) #, ltax=ltax)
 		
+		#~ dbipartintrees[ngene] = {}
 		totaltreelg = genetree.treelength(excludeSelf=True)
 		genetree.complete_internal_labels(force=True, excludeLeaves=True)
 		
@@ -358,12 +415,21 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 		
 		# record what bipart was set in the consensus gene tree
 		for node in genetree:
+			#~ if node.is_root() or node.is_leaf(): continue
 			if node.is_root(): continue
 			if node.is_leaf(): node.set_bs(1.0)
+			#~ if node.bs()==None: print ngene, node.label(), len(node.get_leaf_labels()), 'leaves, no BS', 'under root' if node.go_father().is_root() else ''
 			if node.bs()<bsthreshrefbip: continue
 			subtreelg = node.treelength()
 			taxsets = getBipartFromNode(node, ltaxall)
 			bipart = translateBipartToBitaray(taxsets, ltaxall, asStr=True)
+			#~ if bipart not in dbippp.keys():
+				#~ print "unknown gene tree bipart:", bipart
+				#~ print node.label()
+				#~ print node.bs()
+				#~ oribipart = ''.join([bipart[invtaxorder[i]] for i in range(len(bipart))])
+				#~ print oribipart in dbippp.keys()
+				#~ raise IndexError
 			# !!!! missing taxa will by default be set to '0' by translateBipartToBitaray() 
 			cit = [ngene, node.label(), bipart.count('1'), node.bs(), node.lg(), node.lg()/totaltreelg, subtreelg, subtreelg/totaltreelg]
 			num = indexConsGeneTreeBipart(bipart, num, dbipartsnum, dnumbiparts, ngene, cit, dbipartintrees, dtreeswithbipart, foutgttable)
@@ -382,7 +448,7 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 	for gene in excludedgenes:
 		lngenes.remove(gene)
 	
-	lngenes.sort()
+	#~ lngenes.sort()
 	foutgenelist.write('\n'.join(lngenes)+'\n')
 	foutgenelist.close()
 	
@@ -393,10 +459,15 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 			num, numb = indexBipart(bip, num, dbipartsnum, dnumbiparts)
 			dgeneswithbipart.setdefault(bip, set()).add(ngene)
 			
+	#~ print dgeneswithbipart
+	#~ print len(setbip), num, len(dbipartsnum)
 	print 'found', num, 'different bipartitions with support >=', bsthreshsampbip, 'in bayesian tree samples of at least 1 gene'
 	consnobip = set(dbipartsnum.keys()) - setbip
 	print 'found', len(consnobip), 'bipartition in consensus trees not present in bayesian sample'
+	#~ for cnb in consnobip:
+		#~ print cnb, translateBipartToTaxSet(cnb, ltax)
 	print ''
+	#~ assert len(setbip)==num
 	print ' '.join(ltaxall)
 		
 
@@ -415,12 +486,15 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 	foutbipartPP.close()
 
 	## degenerate matching among biparts
+	#~ print len(dtreeswithbipart), len(dgeneswithbipart)
 	bipartsim = numpy.ones((len(dtreeswithbipart), len(dgeneswithbipart)), dtype=int)*(-1)  # array initialized with -1 distance
 	dbipartsimbipart = {}
 	for numb in dtreeswithbipart:
 		for numB in dtreeswithbipart:
+		#~ for B in dgeneswithbipart:
 			b = dnumbiparts[numb]
 			B = dnumbiparts[numB]
+			#~ numB = dbipartsnum[B]
 			# mapping of similar bipartitions via comparison of the taxon content of their constituent clades
 			# use maximum difference from compared clades to their intersect as a distance
 			dcla = bitwiseBipartDist(b, B)
@@ -428,6 +502,9 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 			# indexes bipart pairs that would potentially cluster with their distance
 			if dcla <= bipartdistthresh:
 				dbipartsimbipart.setdefault(numb, {})[numB] = dcla
+				
+	#~ bipartsim.tofile(foutdistpart, sep='\t', format='%d')
+	#~ foutdistpart.close()
 
 	# search for clusters of similar biparts occuring in different gene trees
 	dclusters = {}
@@ -450,42 +527,121 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 	dpatbip = {}
 	dbipclust = {}
 	foutbipartclust.write('\t'.join(lngenes)+'\n')
+	#~ foutbipartclustext.write('\t'.join(['refbipart']+lngenes)+'\n')
 	for numbref in range(1, ncgtbip+1):
 		lbipclust = [dclusters.get(numbref, {}).get(ngene) for ngene in lngenes]
 		dbipclust[numbref] = lbipclust
 		bitpat = bitarray([bool(bip) for bip in lbipclust])
+		#~ if bitpat.count(1) <= 1: continue # trivial pattern
 		foutbipartclust.write('\t'.join([str(bip) for bip in [numbref]+lbipclust])+'\n')
+		#~ foutbipartclustext.write('\t'.join(['  |  '.join(' '.join(clade) for clade in translateBipartToTaxSet(dnumbiparts[numb], ltax)) for bip in lbipclust])+'\n')
 		dpatbip.setdefault(bitpat.to01(), []).append(numbref)
 	foutbipartclust.close()
+	#~ foutbipartclustext.close()
 
+	#~ # reduces the profile to non-redundant biparts, i.e. removing similar biparts with the same or similar (e.g. inclusive) pattern of occurence among genes
+	#~ lreducedbipclust = []
+	#~ for pat in dpatbip:
+		# print pat
+		#~ bitpat = bitarray(pat)
+		#~ if pat.count()<=1:
+			#~ # trivial pattern
+			#~ continue
+		#~ ## saerch biparts with similar / inclusive patterns along genes
+		#~ # starts with identical patterns
+		#~ lnbip = dpatbip[pat]
+		#~ for simpat in dpatbip:
+			#~ bitsimpat = bitarray(simpat)
+			#~ # test inclusion
+			#~ if (bitpat & bitsimpat).count() == bitpat.count():
+				#~ # bitpat is included in bitsimpat
+				#~ lnbip += dpatbip[simpat]
+				#~ 
+		#~ # check redundancy between biparts
+		# print lnbip
+		#~ nrlnbip = [lnbip[0]]
+		#~ redundant = []
+		#~ i = 0
+		#~ while i < len(lnbip):
+			#~ j = i+1
+			#~ while j < len(lnbip):
+				#~ numb = lnbip[i]
+				#~ numB = lnbip[j]
+				#~ b = dnumbiparts[numb]
+				#~ B = dnumbiparts[numB]
+				#~ if (bitwiseBipartDist(b, B)<bipartdistthresh):
+					#~ # test resemblance
+					#~ sfb = bipartMatchingFuzziness(b, [dnumbiparts.get(bip) for bip in dbipclust[numb]]) # b vs. LB
+					#~ sfB = bipartMatchingFuzziness(B, [dnumbiparts.get(bip) for bip in dbipclust[numB]]) # B vs. Lb
+					#~ if sfb > sfB:
+						#~ redundant.append(lnbip.pop(i))
+						#~ break
+					#~ else:
+						#~ redundant.append(lnbip.pop(j))
+						#~ continue
+				#~ else:
+					#~ j += 1
+			#~ else:
+				#~ i += 1
+		# print "nr", lnbip, "\nredundant", redundant
+		#~ lreducedbipclust += lnbip
+	#~ 
+	#~ # write the reduced list
+	#~ foutnrlist.write('\n'.join([str(bip) for bip in lreducedbipclust])+'\n')
+	#~ foutnrlist.close()
+	#~ 
+	#~ print 'reduced to', len(lreducedbipclust), 'non-redundant biparts'
+		#~ 
+	#~ foutbipartclustnr.write('\t'.join(lngene)+'\n')
+	#~ foutbipartclustnrext.write('\t'.join(['refbipart']+lngene)+'\n')
+	#~ for numbref in lreducedbipclust:
+		#~ lbipclust = dbipclust[numbref]
+		#~ foutbipartclustnr.write('\t'.join([str(numbref)]+[str(bip) for bip in lbipclust])+'\n')
+		#~ ts = dnumbiparts.get(bip, [["NA"]])
+		#~ foutbipartclustnrext.write('\t'.join([str(numbref)]+['  |  '.join(' '.join(clade) for clade in dnumbiparts[numb]) for bip in lbipclust])+'\n')
+	#~ foutbipartclustnr.close()
+	#~ foutbipartclustnrext.close()
+#~ 
 	return [dbipartsnum , dnumbiparts, dbipartingenes, dbipartintrees, dgeneswithbipart, dtreeswithbipart, num, ltaxall, setbip]
 
 def usage():
-	s =  "python bayesbipartprofile.py gene_list mrbayes_result_directory output_directory\n"
+	s = "# # # bayesbipartprofile # # #\n"
+	s += "# profiling of bipartition frequencies in a collection of bayesian phylogenetic (gene) tree samples\n"
+	s += "Usage:\n"
+	s += "python bayesbipartprofile.py gene_list mrbayes_result_directory output_directory\n"
+	s += "\n"
 	s += "Mandatory parameters:\n"
-	s += "\tgene_list\tpath to text file containing the list of gene names (one per line) ordered as in the genome.\n"
-	s += "\t\tNames should match the prefix of files produced by Mrbayes run\n"
+	s += "\tgene_list\t\t\tpath to text file containing the list of gene names (one per line) ordered as in the genome\n"
+	s += "\t\t\t\t\t  (names should match the prefix of files produced by Mrbayes run).\n"
 	s += "\tmrbayes_result_directory\tpath to directory where files produced by Mrbayes are located\n"
-	s += "\toutput_directory\tpath to directory where the output of this script will be written\n"
+	s += "\toutput_directory\t\tpath to directory where the output of this script will be written\n"
+	s += "\n"
 	s += "Opional parameters:\n"
-	s += "--aliases=[string]\tlist of aliase to be used to consider different leaf names in different gene trees to be the same taxon.\n"
-	s += "\t\tProvide as \"alias1=taxon1[,alias2=taxon2,[..]\"\n"
-	s += "--ltax=[path]tpath to file containing the orderred list of taxon names (one per line) to be considered as the list of all possible ones\n"
-	s += "\t\t(in case of heterogeneous presence/absence of genes in taxa). Defaults to the order in the first gene tree, incremented by new taxa incountered in following gene trees.\n"
-	s += "--bs.thresh.ref.bip=[float]\tminimum branch support to report a bipartition as present in the reference (consensus) tree (default 0.35)\n"
+	s += "\t--aliases=[string]\t\tlist of aliase to be used to consider different leaf names in different gene trees to be the same taxon.\n"
+	s += "\t\t\t\t\t  Provide as \"alias1=taxon1[,alias2=taxon2,[..]\"\n"
+	s += "\t--ltax=[path]\t\t\tpath to file containing the orderred list of taxon names (one per line) to be considered as the list of all possible ones\n"
+	s += "\t\t\t\t\t  (in case of heterogeneous presence/absence of genes in taxa).\n"
+	s += "\t\t\t\t\t  Defaults to the order in the first gene tree, incremented by new taxa incountered in following gene trees.\n"
+	s += "\t--bs.thresh.ref.bip=[float]\tminimum branch support to report a bipartition as present in the reference (consensus) tree (default 0.35)\n"
+	s += "\n"
 	s += "Opional parameters:\n"
-	s += "--bs.thresh.samp.bip=[float]\tminimum branch support to report a bipartition from the bayesian sample (default 0.01)\n"
-	s += "--bipart.dist.thresh=[integer]\tmaximum distance between bipartitions (as the number of non-shared taxa) for reporting their similarity (default 2)\n"
-	s += "--remove.trail.in.sequence.names\tthe names of sequences in gene trees will be shortened (cutting at the first occurence of '_' character) to match the reference taxon list\n"
-	s += "-v\t--verbose\tverbose mode\n"
-	s += "-a\t--allgenes\tdo not discard genes where taxa of the reference list are missing; including genes with to much missing taxa will lead to non-ending computations as\n"
-	s += "\t\tas the observed bipartitions will be extended to all the combinations of bipartitions including or excluding each of the missing taxa" 
-	s += "\t\thaving at most 3 missing taxa per gene compared to the ttotal set of observed taxa appear tractable"
+	s += "\t--bs.thresh.samp.bip=[float]\tminimum branch support to report a bipartition from the bayesian sample (default 0.01)\n"
+	s += "\t--bipart.dist.thresh=[integer]\tmaximum distance between bipartitions (as the number of non-shared taxa) for reporting their similarity (default 2)\n"
+	s += "\t--remove.trail.in.seq.names\tthe names of sequences in gene trees will be shortened (cutting at the first occurence of '_' character)\n"
+	s += "\t\t\t\t\t  (may be required in order to match the reference taxon list)\n"
+	s += "\t--name.substring.pattern=[pat]\tsequence name is reduce to the part matching the given regular expression 'pattern'.\n"
+	s += "\t\t\t\t\t  No match will lead to an error; only the first of several matches is used. Overrides the previous option\n"
+	s += "\t-v\t--verbose\t\tverbose mode\n"
+	s += "\t-a\t--allgenes\t\tdo not discard genes where taxa from the reference list are missing.\n"
+	s += "\t\t\t\t\t  Beware: including genes with too many missing taxa will lead to non-ending computations as the observed bipartitions\n" 
+	s += "\t\t\t\t\t  will be extended to all the combinations of compatible bipartitions including or excluding each of the missing taxa;\n" 
+	s += "\t\t\t\t\t  having at most 3 missing taxa per gene appears tractable.\n"
+	s += "\t-h\t--help\t\t\tdisplay this help message and quit\n"
 	return s
 	
 if __name__ == "__main__":
 
-	options, args = getopt.getopt(sys.argv[1:], 'av', ['bs.thresh.ref.bip=', 'bs.thresh.samp.bip=', 'bipart.dist.thresh=', 'aliases=', 'allgenes', 'ltax=', 'verbose', 'remove.trail.in.sequence.names']) # 
+	options, args = getopt.getopt(sys.argv[1:], 'avh', ['bs.thresh.ref.bip=', 'bs.thresh.samp.bip=', 'bipart.dist.thresh=', 'aliases=', 'allgenes', 'ltax=', 'verbose', 'remove.trail.in.seq.names', 'name.substring.pattern=', 'help']) # 
 	dopt = dict(options)
 
 	if (len(args) < 3) or ('-h' in dopt) or ('--help' in dopt):
@@ -502,13 +658,14 @@ if __name__ == "__main__":
 	verbose = ('-v' in dopt) or ('--verbose' in dopt)
 	useallgenes = ('-a' in dopt) or ('--allgenes' in dopt)
 	nfltax = dopt.get('--ltax')
-	removetrailing = '--remove.trail.in.sequence.names' in dopt
+	removetrailing = '--remove.trail.in.seq.names' in dopt
+	namesubstrpat = dopt.get('--name.substring.pattern')
 	if nfltax:
 		with open(nfltax, 'r') as fltax:
 			ltax = [line.rstrip('\n') for line in fltax]
 	else:
 		ltax = None
 
-	dall = main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bipartdistthresh, ltaxall=ltax, aliases=aliases, useallgenes=useallgenes, removetrailing=removetrailing, verbose=verbose)
+	dall = main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bipartdistthresh, ltaxall=ltax, aliases=aliases, useallgenes=useallgenes, removetrailing=removetrailing, namesubstrpat=namesubstrpat, verbose=verbose)
 	with open("%s/allbipartdata.pickle"%outdir, 'w') as fpickle:
 		cPickle.dump(dall, fpickle, 2)
