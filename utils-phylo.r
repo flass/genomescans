@@ -225,7 +225,8 @@ linkageDisequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1
 				A1B1 = paste(A1, B1)
 				x11 = xs[A1B1]
 				if (retcompat){
-					# four-gamete test ; return boolean stating sites are compatible (1) or not (0)
+					# four-gamete test: compatibility <=> maximum three of the four bi-allelic states are observed
+					# return boolean stating sites are compatible (1) or not (0)
 #~ 					return(as.integrer( 0 %in% xs ))
 					return( 0 %in% xs ) # logical format, more compact
 				}else{ if (retfi){
@@ -292,14 +293,16 @@ linkageDisequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1
 	return(msijD)
 }
 
-as.matrix.LDlist = function(lsijD){
+as.matrix.LDlist = function(lsijD, quiet=TRUE){
 	# return a lower triangular matrix
 	starttime = Sys.time()
 	N = length(lsijD)
-	sapply(1:N, function(i){
-		printProgressUpperMatrix(i, N, step=1000, initclock=starttime) 
+	m = sapply(1:N, function(i){
+		if (!quiet){ printProgressUpperMatrix(i, N, step=1000, initclock=starttime)  }
 		c(rep(NA, i), as.numeric(lsijD[[i]]), rep(NA, N-i-length(lsijD[[i]])))
 	})
+	if (!quiet){ cat("\n") } 
+	return(m)
 }
 
 unfold.triangular.LDlist = function(lsijD, maxLD=1){
@@ -324,11 +327,11 @@ exponentialDecay = function(ldmat, pos, max.dist=1000, multiproc=1, quiet=FALSE,
 			pwld = ldi[max(1, floor((length(ldi)-k)/2)):min(length(ldi), floor((length(ldi)+k)/2))]
 		}else{
 			if (format=='upper'){
-				# assumes the matrix to be upper triangular, as outpued by linkageDisequilibrium()
+				# assumes the matrix to be upper triangular, as outputed by linkageDisequilibrium()
 				if (i>1) v = ldmat[max(i-k,1):(i-1),i] else v = numeric()
 				if (i<N) w = ldmat[i,(i+1):min(i+k,N)] else w = numeric()
 			}else{ if (format=='lower'){
-				# assumes the matrix to be lower triangular, as outpued by linkageDisequilibrium()
+				# assumes the matrix to be lower triangular, as outputed by linkageDisequilibrium()
 				if (i>1) v = ldmat[max(i-k,1):(i-1),i] else v = numeric()
 				if (i<N) w = ldmat[i,(i+1):min(i+k,N)] else w = numeric()
 			}else{stop('wrong format')}}
@@ -595,13 +598,13 @@ callPhi = function(aln, alnname, phiwindow=10, phipackpath="~/Programs/PhiPack/P
 	phiout = system(phicall, intern=TRUE)
 	phistat =as.numeric(substring(phiout[length(phiout)-9], 15, 25))
 	phipval = as.numeric(substring(phiout[length(phiout)-1], 15))
-	unlink(nfaln)
+	unlink(nfaln)	# destroy temporary alignment file
 	return(c(phistat, phipval))
 }
 
 reportsnpdens = function(alnrange){ length(alnrange) }
 
-rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measures=c("nucdiv", "gapdens"), fun.usedist=list(), fun.userange=list(), fun.res=list(), dist.model='raw', rmAbsSeq=FALSE, propgap=0.35, relpropgap=10, subsample=NULL, alnname='aln', ctrl.subalnsize=FALSE, multiproc=1, quiet=FALSE){	#, measures=c("distvar", "gapdens", "nucdiv")
+rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measures=c("nucdiv", "gapdens"), fun.usedist=list(), fun.userange=list(), fun.res=list(), dist.model='raw', rmAbsSeq=FALSE, propgap=0.35, relpropgap=10, subsample=NULL, tempdirpath="~/tmp", alnname='aln', ctrl.subalnsize=FALSE, multiproc=1, quiet=FALSE){	#, measures=c("distvar", "gapdens", "nucdiv")
 	stopifnot(is.character(measures))
 	starttime = Sys.time()
 	for (measure in measures){
@@ -656,7 +659,7 @@ rollStats = function(aln, windowsize=1000, step=250, foci=NULL, fun=NULL, measur
 														 discard.gaps=FALSE, multiproc=1, quiet=TRUE), na.rm=TRUE)
 														}else{ result = NA }
 			}else{ if (measure=="PHI"){					if ( ctrl.subalnsize & subalnsize==subsize ){
-															result = callPhi(subaln, sprintf("%s_%d-%d.fas", alnname, a, b), as.integer(subsize/10))
+															result = callPhi(subaln, sprintf("%s_%d-%d.fas", alnname, a, b), as.integer(subsize/10), tempdirpath=tempdirpath)
 														}else{ result = rep(NA, 2) }
 														names(result) = c('statistic', 'p.value')
 			}else{ if (measure=="pscore"){				if ( ctrl.subalnsize & subalnsize==subsize ){
@@ -803,7 +806,7 @@ codeHyperVarClusterProfile = function(hvprofile, hvreg=NULL, coding="AA", write.
 		if (!is.null(write.reg)){
 			if (length(write.reg) > 1){ hvclustdir = write.reg[1] ; hvclustprefix = write.reg[2] 
 			}else{ hvclustdir = '.' ; hvclustprefix = write.reg[1] }
-			seqinr::write.fasta(lseqcodhv, names=rownames(profreg), file.out=paste(hvclustdir, paste(hvclustprefix, nprofreg, 'fasta', sep='.'), sep='/'))
+			seqinr::write.fasta(lseqcodhv, names=rownames(profreg), file.out=file.path(hvclustdir, paste(hvclustprefix, nprofreg, 'fasta', sep='.')))
 		}
 		return(t(sapply(lseqcodhv, function(x){c(x, '-')})))
 	}))
@@ -849,6 +852,56 @@ fullAln2RefCoords = function(fullaln, reflabel=1, bijective=TRUE){
 #~ 	map = imap[imap[,1]==TRUE,2]
 #~ 	if (bijective){ map[map==0] = NA }
 	return(map)
+}
+
+getAlnFmt = function(seq){
+	wrongfmt = 'unvalid format, needs DNAbin or character matrix single-sequence alignment'
+	if (!(is.matrix(seq) & dim(seq)[1]==1)){ stop(wrongfmt) }
+	if (class(seq)=='DNAbin'){ asf = as.DNAbin
+	}else{ if (class(refalnseq[1,1])=='character'){ asf = as.character
+	}else{ stop(wrongfmt)
+	}}
+	return(asf)
+}
+
+translateAlnCoords = function(refalnseq, newcoords, asf=as.DNAbin){
+		transalnseq = as.character(refalnseq)[,newcoords]
+		transalnseq[is.na(transalnseq)] = '-'
+		transalnseq = asf(transalnseq)
+		return(transalnseq)
+}
+
+refAln2NewAlnCoords = function(refalnseq, newalnseq, returnTranslatedAln=F){
+	# same fullAln2RefCoords(), but can handle an alredy aligned sequence as reference
+	# it detects where gaps have been INTRODUCED (cannot deal with gap removal)
+
+	as1 = getAlnFmt(refalnseq)
+	as2 = getAlnFmt(newalnseq)
+	
+	k = 1
+	map = c()
+	for (j in 1:dim(newalnseq)[2]){
+		if (newalnseq[1,j]==as2('-')){
+			if (refalnseq[1,k]==as1('-')){
+				map = c(map, k)
+				k = k + 1
+			}else{ 
+				# gap was introduced in newalnseq
+				map = c(map, NA)
+			}
+		}else{
+			map = c(map, k)
+			k = k + 1
+		}
+	}
+	if (!returnTranslatedAln){
+		return(map)
+	}else{
+		# for verification purpose
+		transalnseq = translateAlnCoords(refalnseq, map, asf=as2)
+		# so that: transalnseq == newalnseq
+		return(transalnseq)
+	}
 }
 
 regionList2indexes = function(reglist, concat=TRUE){
@@ -1068,9 +1121,9 @@ testCorSeqTypes = function(matprofseqtypes){
 
 exportSeqTypesAlignments = function(matprofseqtypes, laln, dir.out=NULL, gname.long.alias=NULL){
 	if (!is.null(dir.out)){
-		diroutseqs = paste(dir.out, 'seqtype_sequences', sep='/')
+		diroutseqs = file.path(dir.out, 'seqtype_sequences')
 		dir.create(diroutseqs, showWarnings=F, recursive=T)
-		diroutcons = paste(dir.out, 'seqtype_consensus', sep='/')
+		diroutcons = file.path(dir.out, 'seqtype_consensus')
 		dir.create(diroutcons, showWarnings=F, recursive=T)
 	}
 	lcons = sapply(colnames(matprofseqtypes), function(gname){
@@ -1081,7 +1134,7 @@ exportSeqTypesAlignments = function(matprofseqtypes, laln, dir.out=NULL, gname.l
 			if (as.numeric(st)!=0){
 				staln = laln[[gname]][rownames(matprofseqtypes)[profseqtypes==st], ]
 #~ 				print(staln)
-				if (!is.null(dir.out)){ write.dna(staln, file=paste(diroutseqs, paste(genename, '-ST', st, '.aln', sep=''), sep='/'), format='fasta') }
+				if (!is.null(dir.out)){ write.dna(staln, file=file.path(diroutseqs, paste(genename, '-ST', st, '.aln', sep='')), format='fasta') }
 				cons = seqinr::consensus(ape::as.alignment(staln), method='majority')
 				lstcons = c(lstcons, list(cons))
 				lstaln = c(lstaln, list(staln))
@@ -1090,7 +1143,7 @@ exportSeqTypesAlignments = function(matprofseqtypes, laln, dir.out=NULL, gname.l
 			}
 		}
 		if (!is.null(dir.out)){ seqinr::write.fasta(lstcons, names=nstcons, nbchar=max(sapply(lstcons, length), na.rm=T),
-		 file.out=paste(diroutcons, paste(genename, '-STconsensus', '.aln', sep=''), sep='/')) }
+		 file.out=file.path(diroutcons, paste(genename, '-STconsensus', '.aln', sep=''))) }
 		mstcons = as.DNAbin(t(simplify2array(lstcons)))
 		rownames(mstcons) = nstcons
 		names(lstaln) = nstcons
