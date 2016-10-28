@@ -200,16 +200,41 @@ hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsea
 ### optional if you have an annotation with the coordinates of the genes
 ### to determine which gene harbour the LD hospots
 
-# must load CDS coordinates
-#~ nfmapcds = paste('somepath', "mapCDSalignementsToRef.RData", sep="/")
-nfmapcds = '/path/to/map/genes/location/to/ref/genome.RData'
-
-### MUST generate in a separate script (or add to this one here) a list called 'lcds.ref.i' with each elelment refering to a gene, and named accordingly (unique names as they are indexes)
-### each element is a vector of positions in the genomic alignment corresponding to the segment of the reference sequence where is annotated the gene, i.e. it is a subset of 'map.full2ref'
-
+# load CDS/gene coordinates
 if (file.exists(nfmapcds)){
-	load(nfmapcds)
-	print(c('load \'lcds.ref.i\' from', nfmapcds))
+	nfmapcds = '/path/to/ref/genome/genbank/feature/table.txt'
+	
+	# from a GenBank feature table file
+	print(c('parse \'lcds.ref.i\' from', nfmapcds))
+	features = strsplit(readLines(nfmapcds, split='\t')
+	lcds.ref.i = list()
+	# extract gene feature coordinates from file
+	currcoords = NULL
+	for (n in 1:length(features)){
+		line = features[[n]]
+		if (length(line) == 3){
+			if (line[3]=='gene'){
+				currcoords = sort(as.numeric(sub('[><]', '', line[1:2])))
+				print(currcoords)
+			}
+		}
+		if (length(line) == 5){
+			if (line[4]=='gene'){
+				gene = line[5]
+				if (!is.null(currcoords)){
+					lcds.ref.i[[gene]] = currcoords
+					currcoords = NULL
+					print(gene)
+				} #else{ stop('no coordinates recorded for this gene feature') }
+			}
+		}
+	}
+
+	# if no feature table available:
+	# must generate in a separate script (or add to this one here) a list called 'lcds.ref.i' with each element refering to a gene, and named accordingly (unique names as they are indexes)
+	# each element is a vector of positions in the genomic alignment corresponding to the segment of the reference sequence where is annotated the gene, i.e. it is a subset of 'map.full2ref'
+
+	# get locus-wise stats
 	lcds.maxlogcompldfi = t(sapply(lcds.ref.i, function(cds.ref.i){ 
 		cds.pos.i = ldroll$reference.position %in% cds.ref.i
 		m = max(ldroll$logcompldfi[cds.pos.i], na.rm=T)
