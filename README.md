@@ -1,8 +1,13 @@
 # genomescans
-R module and script for the analysis of aligned biological sequences, mainly to perform genome-wide scan for the detection of hotspots of diversity, LD, etc.
+R/Python modules and scripts for the analysis of aligned genomic sequences, to analyse of phylotype/haplotype structure of a genomic dataset and to perform genome-wide scans for the detection of hotspots of diversity, LD, etc.
+
+This software suite was used in the following paper: [F. Lassalle et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. Virus Evolution 2 (1), vew017.](http://dx.doi.org/10.1093/ve/vew017), where mehtods are described in detail. Please cite the paper if using any of the software below.
+
+## bayesbipartprofile suite
+The bayesbipartprofile suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the '[bayesbipartprofile.py](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.py)' script generates a database of bipartiations and search for similarities between them. Then, the [bayesbipartprofile.r](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r)' script builds matrices of bipartition support (using posterioir probability and compatibility metrics) across loci to detect conserved tracks of clonal phylogenetic stracture, i.e. haplotypes, and provide text table and graphic output.
+(parser last tested and working on ouput from MrBayes 3.2.2)
 
 ## [genome-wide_LD_template.r](https://github.com/flass/genomescans/blob/master/genome-wide_LD_template.r)
-
 The '[genome-wide_LD_template.r](https://github.com/flass/genomescans/blob/master/genome-wide_LD_template.r)' script performs a genome-wide search for linkage disequilibrium (LD) based on the distribution of alleles at biallelic polymorphic sites (SNPs) in a multiple sequence alignment.
 It mainly rely on `linkageDisequilibrium()` and `rollStats()` functions in '[utils-phylo.r](https://github.com/flass/genomescans/blob/master/utils-phylo.r)' module.
 
