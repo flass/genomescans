@@ -215,7 +215,6 @@ if (file.exists(nfmapcds)){
 		if (length(line) == 3){
 			if (line[3]=='gene'){
 				currcoords = sort(as.numeric(sub('[><]', '', line[1:2])))
-				print(currcoords)
 			}
 		}
 		if (length(line) == 5){
@@ -224,7 +223,6 @@ if (file.exists(nfmapcds)){
 				if (!is.null(currcoords)){
 					lcds.ref.i[[gene]] = currcoords
 					currcoords = NULL
-					print(gene)
 				} #else{ stop('no coordinates recorded for this gene feature') }
 			}
 		}
@@ -307,7 +305,7 @@ par(mar=c(8,8,8,8))
 plot(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$logcompldfi, ylab=sprintf('LD significance in\n%d biallelic site windows [-log10(p)]', ldsearchpar$windowsize), main="LD scan with variable-size windows", xlab=sprintf('%s genome coordinates', reflabel), col='white')
 abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$logcompldfi, col=ifelse(ldroll$compldfi < ldsearchpar$signifthresh, 'red', 'black'))
-if (!is.null(lcds.ref.i)){ text(labels=paste(hiLDgenes[!is.na(hiLDgenes)], '\'', sep='\n'), x=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],1], y=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],2]+.5) }
+if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){ text(labels=paste(hiLDgenes[!is.na(hiLDgenes)], '\'', sep='\n'), x=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],1], y=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],2]+.5) }
 physize = plotphysize(20, plot, type='l', xlab=sprintf('%s genome coordinates', reflabel), ylab="Physical size of 20-SNP windows")
 snpdens = ldsearchpar$windowsize/(physize[ldroll$foci])
 plot(x=snpdens, y=ldroll$logcompldfi, ylab=sprintf("LD significance in\n%d biallelic site windows [-log10(p)]", ldsearchpar$windowsize), xlab="Biallelic SNP density in variable-size windows")
@@ -321,7 +319,7 @@ pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub$compldfisub)], f
 pb = sapply(lapply(rollsubsnpdens$foci[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, col='pink')
 abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[ldrollsub$foci], ldrollsub$logcompldfisub, col=ifelse(ldrollsub$compldfisub < ldsearchparsub$signifthresh, 'red', 'black'))
-if (!is.null(lcds.ref.i)){ text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxlogcompldfisub[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxlogcompldfisub[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5) }
+if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){ text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxlogcompldfisub[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxlogcompldfisub[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5) }
 legend('topright', fill=c('grey', 'pink'), legend=c('no data', sprintf("< %d biallelic SNP / window\n(low test power)", ldsearchparsub$maxsize)), bg='white')
 plot(ldrollsub$logcompldfisub ~ rollsubsnpdens$reportsnpdens, ylab=sprintf("LD significance in\n%dbp-wide windows [-log10(p)]", ldsearchparsub$windowsize), xlab="Biallelic SNP density in fixed-size windows")
 hist(rollsubsnpdens$reportsnpdens, breaks=0:20, xlab="Biallelic SNP density in fixed-size windows", main="Distribution of SNP densities genome-wide")
