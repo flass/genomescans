@@ -29,6 +29,8 @@ gapchars = c('-', 'N', 'n')	# various characters to consider as missing data
 #~ LDmetric = 'r2'
 LDmetric = 'Fisher'
 
+LDmetricName = c('biallelic site pattern correlation (r^2)', 'Fisher\'s exact test p-value') ; names(LDmetricName) = c('r2', 'Fisher')
+
 reflabel = 'reflabel'	# label in the alignement of the strain to use for reference genome coordinates
 
 # define path to alignment file
@@ -56,10 +58,10 @@ siteset = paste('biallelicsites.max', maxgap, 'gaps', sep='')
 
 nfbiali = paste(resultdir, paste("BiallelicIndexes", minalfrqset, siteset, 'RData', sep='.'), sep='/')
 if (file.exists(nfbiali)){ 
-	print(c('load \'bialraregap.i\' from', nfbiali))
+	print(c('load \'bialraregap.i\' from', nfbiali), quote=F)
 	load(nfbiali)
 }else{
-	print('compute \'bialraregap.i\'')
+	print('compute \'bialraregap.i\'', quote=F)
 	#~ bial.i = as.vector(as.numeric(sapply(readLines(paste(resultdir, rms, paste(minalfrqset, siteset, 'snp', sep='.'), sep='/')), function(x){ strsplit(x, split='\t')[[1]][4] })))
 	# biallelic sites including gaps (to be filtered out at each pairwise site comparison)
 	bialgap.i = getBiAllelicIndexes(full.aln, as.logical=FALSE, minallelefreq=NULL, nonsingle=FALSE, consider.gaps.as.variant=FALSE, multiproc=nbcores)
@@ -74,10 +76,10 @@ if (file.exists(nfbiali)){
 ## compute Nucleotidic diversity
 nfnd = paste(resultdir, paste("NucDiv", 'all', 'RData', sep='.'), sep='/')
 if (file.exists(nfnd)){ 
-	print(c('load \'rollnucdiv\' from', nfnd))
+	print(c('load \'rollnucdiv\' from', nfnd), quote=F)
 	load(nfnd)
 }else{
-	print('compute \'rollnucdiv\'')
+	print('compute \'rollnucdiv\'', quote=F)
 	rollnucdiv = rollStats(full.aln, windowsize=100, step=1, fun=NULL, measures=c("nucdiv"), dist.model='raw', rmAbsSeq=TRUE, propgap=0.35, relpropgap=10, multiproc=nbcores, quiet=FALSE)
 	rollnucdiv$reference.position =  map.full2ref[rollnucdiv$foci]
 	rollnucdiv = rollnucdiv[!is.na(rollnucdiv$reference.position),]
@@ -93,15 +95,15 @@ bial.aln = full.aln[, bialraregap.i]
 ref.bial.i = map.full2ref[bialraregap.i]
 nfldr = paste(resultdir, paste(sprintf("LD_%s", LDmetric), minalfrqset, siteset, ifelse(is.null(max.dist.ldr), 'whole-matrix', paste('maxdist', max.dist.ldr, sep='')), 'RData', sep='.'), sep='/')
 if (file.exists(nfldr)){ 
-	print(c('load \'bial.ldr2\' from', nfldr))
+	print(c('load \'bial.ldr2\' from', nfldr), quote=F)
 	load(nfldr)
 }else{
 	nfldrtmp = paste(nfldr, 'tmp', sep='.')
 	if (file.exists(nfldrtmp)){ 
-		print(c('load \'lbial.ldr2\' from', nfldrtmp))
+		print(c('load \'lbial.ldr2\' from', nfldrtmp), quote=F)
 		load(nfldrtmp)
 	}else{
-		print(sprintf('compute \'lbial.ldr2\' with metric \'%s\', using %d cores', LDmetric, nbcores))
+		print(sprintf('compute \'lbial.ldr2\' with metric \'%s\' (%s), using %d cores', LDmetric, LDmetricName[LDmetric], nbcores), quote=F)
 		# !!! very big memory use (ex : for 42 strains * with ~10,000 biallelic SNPs: >20Gb Mem)
 		# !!! use of parallism lead to big overhead, probably due to hidden duplication of the (gigantic) data matrix ; code may be optimized, but could not find the way yet. if possible, run with nbcores=1
 		# or do it, just use a high memeory machine; 100G free mem to run 16 cores over a 20,000 alignment sites works OK
@@ -110,7 +112,7 @@ if (file.exists(nfldr)){
 		# temporary save
 		save(lbial.ldr2, file=nfldrtmp)
 	}
-	print('expand data into a matrix')
+	print('expand data into a matrix', quote=F)
 #~ 	bial.ldr2 = as.matrix.LDlist(lbial.ldr2, length(bialraregap.i))
 	bial.ldr2 = as.matrix.LDlist(lbial.ldr2)
 	rm(lbial.ldr2) ; gc()
@@ -137,30 +139,55 @@ if (file.exists(nflocld)){ load(nflocld)
 }else{
 	print("get local LD intensity", quote=F)
 	if (LDmetric == 'Fisher'){
+		print(sprintf(" within windows of variable physical size, containing always %d biallelic sites", ldsearchpar$windowsize), quote=F)
 		# for the null distribution, uses the total empiric distribution, taking only a sample to have comparable effective size for the test
-		# sample the matrix in the diagonal ribbon that will be explored by the sliding window (should be higher values than on the whole matrix)
+		# sample the matrix in the diagonal ribbon that will be explored by the sliding window (i.e. short-distance comparisons, should be higher values than on the whole matrix)
 		ribbonheight = ldsearchpar$windowsize/2
 		nfribbon = paste(resultdir, paste(sprintf("LDmatrix_LowerRibbonIndexes_%dsites_window%d", dim(bial.ldr2)[1], ldsearchpar$windowsize), "LocalLD", minalfrqset, siteset, 'RData', sep='.'), sep="/")
 		if (file.exists(nfribbon)){ load(nfribbon)
 		}else{
+			print("  get site range for computing empirical null distribution", quote=F)
 			ribbon.i = conditionalMatrixIndexes(dim(bial.ldr2)[1], getIndexesLowerRibbon, max.dist=ribbonheight, multiproc=1)
+			print(sprintf("   %d sites ; perform scan", length(ribbon.i)), quote=F)
 			save(ribbon.i, file=nfribbon)
 		}
-		# excludes NA located in the lower triangular matrix so has take a sample the size of the upper traingular part of the sliding window matrix 
+		# take a sample the size of the upper triangular part of the sliding window matrix 
 		samplesize = ldsearchpar$windowsize*(ldsearchpar$windowsize - 1)/2
 		# use quantiles tu ensure sample is representative of the distribution
-		samplewgfi = quantile(bial.ldr2[ribbon.i], p=(0:samplesize)/samplesize, na.rm=T)	
+		# excludes NA located in the lower triangular matrix so as to get the right count of informative cells
+		samplewgfi = quantile(bial.ldr2[ribbon.i], p=(0:samplesize)/samplesize, na.rm=T)
+		print(sprintf("baseline LD (%s) within a distance of %d biallelic sites :", LDmetricName[LDmetric], ldsearchpar$windowsize), quote=F)
+		print(summary(samplewgfi), quote=F)
 		measure = "compldfi"
 		compldfi = function(alnrange){ if (length(alnrange)<5){ return(NA) }else{ wilcox.test(-log10(bial.ldr2[alnrange, alnrange]), -log10(samplewgfi), alternative='greater')$p.val }}		
 		ldroll = rollStats(bial.aln, windowsize=ldsearchpar$windowsize, step=ldsearchpar$step, fun=compldfi, measures=c("compldfi"), fun.userange=list(compldfi=TRUE), multiproc=1)
 		ldroll$logcompldfi = -log10(ldroll$compldfi)
-		# use windows of fixed physical size to sample bialelic sites at a fixed (maximum) density within it
+		
+		print(sprintf(" within windows of fixed physical size %dbp to sample bialelic sites within windows at a fixed (maximum) density of %d/window", ldsearchparsub$windowsize, ldsearchparsub$maxsize), quote=F)
+		# for the null distribution, uses the total empiric distribution, taking only a sample to have comparable effective size for the test
+		# sample the matrix in the diagonal ribbon that will be explored by the sliding window (i.e. short-distance comparisons, should be higher values than on the whole matrix)
+		subribbonheight = ldsearchparsub$windowsize/2
+		nfsubribbon = paste(resultdir, paste(sprintf("LDmatrix_LowerRibbonIndexes_%dsites_physical-window%d", dim(bial.ldr2)[1], ldsearchparsub$windowsize), "LocalLD", minalfrqset, siteset, 'RData', sep='.'), sep="/")
+		if (file.exists(nfsubribbon)){ load(nfsubribbon)
+		}else{
+			print("  get site range for computing empirical null distribution", quote=F)
+			subribbon.i = conditionalMatrixIndexes(dim(bial.ldr2)[1], getIndexesLowerPhysicalRibbon, max.dist=subribbonheight, pos=bialraregap.i, multiproc=1)
+			print(sprintf("   %d sites ; perform scan", length(subribbon.i)), quote=F)
+			save(subribbon.i, file=nfsubribbon)
+		}
+		# take a sample the size of the upper triangular part of the sliding window matrix 
+		subsamplesize = ldsearchparsub$maxsize*(ldsearchparsub$maxsize - 1)/2
+		# use quantiles tu ensure sample is representative of the distribution
+		# excludes NA located in the lower triangular matrix so as to get the right count of informative cells
+		subsamplewgfi = quantile(bial.ldr2[subribbon.i], p=(0:samplesize)/subsamplesize, na.rm=T)	
+		print(sprintf("baseline LD (%s) within a physical distance of %dbp :", LDmetricName[LDmetric], ldsearchparsub$maxsize), quote=F)
+		print(summary(subsamplewgfi), quote=F)
 		compldfisub = function(alnrange){ 
 			if (length(alnrange)<5){ return(NA) 
 			}else{
 				bialrange = which(bialraregap.i %in% alnrange)
 #~ 				print(bialrange)
-				wt = wilcox.test(-log10(bial.ldr2[bialrange, bialrange]), -log10(samplewgfi), alternative='greater')
+				wt = wilcox.test(-log10(bial.ldr2[bialrange, bialrange]), -log10(subsamplewgfi), alternative='greater')
 				return(wt$p.val)
 		}}
 		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=compldfisub, measures=c("compldfisub"), fun.userange=list(compldfisub=TRUE), multiproc=1)
@@ -205,7 +232,7 @@ if (file.exists(nfmapcds)){
 	nfmapcds = '/path/to/ref/genome/genbank/feature/table.txt'
 	
 	# from a GenBank feature table file
-	print(c('parse \'lcds.ref.i\' from', nfmapcds))
+	print(c('parse \'lcds.ref.i\' from', nfmapcds), quote=F)
 	features = strsplit(readLines(nfmapcds, split='\t')
 	lcds.ref.i = list()
 	# extract gene feature coordinates from file

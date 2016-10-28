@@ -138,20 +138,24 @@ getIndexesOutUpperRibbon = function(i,j, max.dist){ if (j<=i){ return(TRUE) }els
 getIndexesOutDiagonalRibbon = function(i,j, max.dist){ return((j < i-max.dist) | (j > i+max.dist)) }
 getIndexesUpperRibbon = function(i,j, max.dist){ return(j>i & j<=max.dist+i) }
 getIndexesLowerRibbon = function(i,j, max.dist){ return(j<i & j>=i-max.dist) }
+getIndexesUpperPhysicalRibbon = function(i,j, max.dist, pos){ return(j>i & pos[j]<=max.dist+pos[i]) }
+getIndexesLowerPhysicalRibbon = function(i,j, max.dist, pos){ return(j<i & pos[j]>=pos[i]-max.dist) }
 
 # retrieve indexes of a NxN square matrix using a conditional function ; return them as a Nx2 matrix (directly usable as an index array)
-conditionalMatrixIndexes = function(matdim, fun, multiproc=1, ...){
+conditionalMatrixIndexes = function(matdim, fun, multiproc=1, quiet=F, ...){
 	starttime = Sys.time()
 	condi = function(i){
 			condok = which(sapply(1:matdim, fun, i=i, ...))
-			printProgressUpperMatrix(i, matdim, step=100, initclock=starttime)
+			if (!quiet){ printProgressUpperMatrix(i, matdim, step=100, initclock=starttime) } 
 			return(cbind(rep(i, length(condok)), condok))
 	}
 	if (multiproc > 1){
-		do.call(rbind, mclapply(1:matdim, condi, mc.cores=multiproc, mc.preschedule=FALSE))
+		cond.i = do.call(rbind, mclapply(1:matdim, condi, mc.cores=multiproc, mc.preschedule=FALSE))
 	}else{
-		do.call(rbind, lapply(1:matdim, condi))
+		cond.i = do.call(rbind, lapply(1:matdim, condi))
 	}
+	if (!quiet){ cat("\n") }
+	return(cond.i)
 }
 
 linkageDisequilibrium = function(aln, metric="r", discard.gaps=TRUE, multiproc=1, verbose=FALSE, quiet=FALSE, max.dist=NULL, mem.light=FALSE, upper.triangular=TRUE, full.matrix=FALSE, gapchar=c('-')){
