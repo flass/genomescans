@@ -4,7 +4,7 @@ R/Python modules and scripts for the analysis of aligned genomic sequences, to a
 This software suite was used in the following paper: [F. Lassalle et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. Virus Evolution 2 (1), vew017.](http://dx.doi.org/10.1093/ve/vew017), where mehtods are described in detail. Please cite the paper if using any of the software below.
 
 ## bayesbipartprofile suite
-The bayesbipartprofile suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the '[bayesbipartprofile.py](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.py)' script generates a database of bipartiations and search for similarities between them. Then, the [bayesbipartprofile.r](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r)' script builds matrices of bipartition support (using posterioir probability and compatibility metrics) across loci to detect conserved tracks of clonal phylogenetic stracture, i.e. haplotypes, and provide text table and graphic output.
+The bayesbipartprofile suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the '[bayesbipartprofile.py](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.py)' script generates a database of bipartiations and search for similarities between them. Then, the '[bayesbipartprofile.r](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r)' script builds matrices of bipartition support (using posterioir probability and compatibility metrics) across loci to detect conserved tracks of clonal phylogenetic stracture, i.e. haplotypes, and provide text table and graphic output.
 (parser last tested and working on ouput from MrBayes 3.2.2)
 
 ## [genome-wide_LD_template.r](https://github.com/flass/genomescans/blob/master/genome-wide_LD_template.r)
@@ -48,7 +48,6 @@ names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
 ```
 ### plotting and reporting options
 ```R
-nfmapcds = '/path/to/map/genes/location/to/ref/genome.RData'
-# must be generated in a separate script (or add code to this one) a list called 'lcds.ref.i' with each element refering to a gene, and named accordingly (choose unique names as they are indexes)
-# each element is a vector of positions in the genomic alignment corresponding to the segment of the reference sequence where is annotated the gene, i.e. it is a subset of global map object 'map.full2ref'
+nfmapcds = '/path/to/ref/genome/genbank/feature/table.txt'
+# requires a GenBank feature table file matching the reference sequence
 ```
