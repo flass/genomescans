@@ -51,3 +51,11 @@ names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
 nfmapcds = '/path/to/ref/genome/genbank/feature/table.txt'
 # requires a GenBank feature table file matching the reference sequence
 ```
+
+## detect_recomb scripts
+
+These scripts provide wrappers for recombination detection programs, including GeneConv, PHI and HyPhy's SBP/GARD in particular.
+
+Both script allow the execution of many unique jobs. For that you've got to provide a list of tasks, i.e. a file in which each line is a path to a sequence alignment you desire to scan. The Python script run tasks sequentially, the qsub script (shell wrapper to submit parallel jobs of the Python script to a SGE type of computer cluster) possibly distributing them in parallel jobs dealing with chunks of tasks to be executed sequentially).
+
+In particular, to use GARD, one has to specify the location of the `mpirun` command and of the `hyphy/` root folder (set `mpipath` and `hyphypath` variables directly in the Python script, or set the `$mympi` and `$myhyphy` variables in the qsub script).
