@@ -1,0 +1,91 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -N detect_recomb
+#$ -o /home/ucbtass/logs/detect_recomb
+#$ -j y 
+#$ -l h_rt=72:00:00 
+#$ -l tmem=5G 
+#$ -l h_vmem=5G 
+#$ -l scr=1G
+#$ -pe mpi 5
+
+
+if [ -z $3 ] ; then
+  echo "Usage: detect_recomb.qsub task_list program(s)(p1{Phi|SBP|GARD|GENECONV|all}[,p2[,...]]) tabular_output_file [nbchunks]"
+  exit 2
+fi
+tasklist=$1
+recprogs=$2
+outtab=$3
+if [ -z $4 ] ; then
+  nbchunks=$SGE_TASK_LAST
+else
+  nbchunks=$4
+fi
+
+date
+echo "This is job $JOB_NAME, job-ID $JOB_ID, ja-task-ID $SGE_TASK_ID ($JOB_ID.$SGE_TASK_ID) on host $HOSTNAME"
+#mypython='/share/apps/python-2.7.3-static/bin/python2.7'
+#mypython='/share/apps/python-2.7.10-shared/bin/python2.7'
+mypython='/share/apps/python/bin/python2.7'
+#export myhyphy="/share/apps/genomics/hyphy"
+export myhyphy="/home/ucbtass/Programs/hyphy"
+#export mympi="/share/apps/openmpi-1.8.1/bin/mpiexec --mca btl_tcp_if_include eth0"
+export mympi="/opt/openmpi/bin/mpiexec"
+#~ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/openmpi/lib
+#export mympi="/opt/SUNWhpc/HPC8.2.1/gnu/bin/mpirun --mca btl_tcp_if_exclude lo,eth0"
+
+echo "Using:"
+echo "Python interpreter:"
+echo $mypython
+$mypython -V
+echo "- - - -"
+echo "HyPhy package:"
+echo $myhyphy
+echo "- - - -"
+echo "MPI environment:"
+echo $mympi
+echo "- - - -"
+echo "#call: detect_recomb.qsub $task_list $recprogs $outtab"
+echo ""
+
+nbtasks=`wc -l $tasklist | cut -d' ' -f1`
+chunksize=`$mypython -c "dm = divmod(int($nbtasks), int($nbchunks)) ; print dm[0]+(1 if dm[1]>0 else 0)"`
+chunkfirst=`$mypython -c "print ((int($SGE_TASK_ID) - 1) * int($chunksize)) + 1"`
+chunklast=`$mypython -c "print min(int($SGE_TASK_ID) * int($chunksize), $nbtasks)"`
+nfsubtasklist=${tasklist}_${chunkfirst}-${chunklast}
+nfsubouttab=${outtab}_${chunkfirst}-${chunklast}
+echo "work on task chunk ${chunkfirst}-${chunklast}:"
+
+$mypython << EOF
+ftasks = open('$tasklist', 'r')
+tasks = ftasks.readlines()
+ftasks.close()
+fsubtasks = open('$nfsubtasklist', 'w')
+fsubtasks.writelines(tasks[(${chunkfirst}-1):${chunklast}])
+fsubtasks.close()
+EOF
+cat $nfsubtasklist
+echo ""
+
+# chdir to a local directory to do in out there
+locdir=/scratch0/$USER/detect_recomb.$nfsubtasklist
+mkdir -p $locdir
+cd $locdir
+
+#~ $mypython /home/ucbtass/Python_lib/detect_recomb.py $nfsubtasklist $recprogs $nfsubouttab $NSLOTS >& ${SGE_STDOUT_PATH}_${chunkfirst}-${chunklast}
+$mypython /home/ucbtass/scripts/recomb_scripts/detect_recomb.py $nfsubtasklist $recprogs $nfsubouttab $NSLOTS
+
+#~ # check completion of all sister job for fusion of results in one same table
+#~ if [ `qstat | grep -c $JOB_ID` -eq 1 ] ; then
+  #~ cat ${outtab}_* > $outtab
+#~ fi
+
+#clean the mess in local dir
+echo "was in: $PWD"
+echo "ls ."
+ls .
+echo "rm -r $locdir/"
+rm -r $locdir/
+echo "ls $locdir"
+ls $locdir
