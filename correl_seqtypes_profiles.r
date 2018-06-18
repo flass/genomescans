@@ -8,10 +8,10 @@ nbcores = 6
 homedir = Sys.getenv()['HOME']
 source(paste(homedir, 'scripts/misc/utils-phylo.r', sep='/'))
 
-dark.heat.colors = function(n, k=11){
+dark.heat.colors = function(n, k=5){
 	ndark = n - k
-	darkcol = sapply(1:(ndark), function(i){ rgb((1/ndark)*(i-1), 0, 0,1) })
 	print(c(n,k))
+	darkcol = sapply(1:(ndark), function(i){ rgb((1/ndark)*(i-1), 0, 0,1) })
 	return(c(darkcol, heat.colors(k)))
 }
 
@@ -26,7 +26,9 @@ plotCorTestMatrix = function(rvmat, pval='p.value', estr='rv', maxdim.cellnote=3
 	}
 	rvpval = log10(sapply(1:N, function(i){ sapply(1:N, function(j){ ifelse((i!=j & !is.na(nrvmat[i,j][[1]][1])), nrvmat[i,j][[1]][[pval]], NA) }) }) * (N*(N-1)/2))
 	dimnames(rvpval) = dimnames(nrvmat) 
-	colbrk = c(floor(min(rvpval, na.rm=T)), seq(-20, 0, 1), ceiling(max(rvpval, na.rm=T)))
+	print(summary(as.vector(rvpval)))
+	colbrk = seq(floor(min(rvpval, na.rm=T)), ceiling(max(rvpval, na.rm=T)))
+	print(colbrk)
 	if (N<=maxdim.cellnote){
 		rvest = sapply(1:N, function(i){ sapply(1:N, function(j){ ifelse(!is.na(nrvmat[i,j][[1]][1]), round(nrvmat[i,j][[1]][[estr]], 2), NA) }) })
 		dimnames(rvest) = dimnames(nrvmat)
@@ -58,18 +60,21 @@ plotCorTestMatrix = function(rvmat, pval='p.value', estr='rv', maxdim.cellnote=3
 
 coul = function(n){ c('#FFFFFFFF', rainbow(n-1)) }
 
-plotHiLDSeqTypes = function(genes, dbbiparts, gtdet, ltax, dir.out=NULL, lcds.aln=NULL, minrbl=0.1, minbs=0.75, fixnbcut=7, relative.lengths=TRUE, term.branch.standard=FALSE, size.weights=FALSE, excl.gene=NULL, subsample=NULL, n.subsample=100){	# dump the supported clades in specific genes
+plotHiLDSeqTypes = function(genes, dbbiparts, gtdet, ltax, dir.out=NULL, lcds.aln=NULL, minrbl=0.1, minbs=0.75, fixnbcut=7, relative.lengths=TRUE, term.branch.standard=FALSE, size.weights=FALSE, excl.gene=NULL, subsample=NULL, n.subsample=100, splitlastunderscore=NULL){	# dump the supported clades in specific genes
 	genenames = names(genes)
 	if (file.info(dbbiparts)$isdir){
 		dirgeno = paste(dbbiparts, '/list_genotypes_rvt', minrbl, '_msw', minbs, '_fnc', fixnbcut, sep='')
-		print(dirgeno)
 		lseqtypes = lapply(genenames, function(g){
+			print(g)
 			strsplit(readLines(paste(dirgeno, paste(g, 'geno_labels', sep='.'), sep='/')), split='\t')
 		})
 		names(lseqtypes) = genenames
 		matprofseqtypes = sapply(genenames, function(g){
 			print(g)
 			if (!is.null(lcds.aln[[g]])){
+				if (!is.null(splitlastunderscore)){
+					rownames(lcds.aln[[g]]) = sapply(strsplit(rownames(lcds.aln[[g]]), split='_'), function(x){ paste(x[1:(length(x) - splitlastunderscore)], collapse='_') })
+				}
 				# check the presence of all strains in alignment (as it may be eluded in bipart coding)
 				excl.strains = setdiff(ltax, rownames(lcds.aln[[g]]))
 			}else{ excl.strains = NULL }
@@ -83,6 +88,9 @@ plotHiLDSeqTypes = function(genes, dbbiparts, gtdet, ltax, dir.out=NULL, lcds.al
 		matprofseqtypes = sapply(genenames, function(g){
 			ggtdet = gtdet[gtdet$gene_label==g,]
 			if (!is.null(lcds.aln)){
+				if (!is.null(splitlastunderscore)){
+					rownames(lcds.aln[[g]]) = sapply(strsplit(rownames(lcds.aln[[g]]), split='_'), function(x){ paste(x[1:(length(x) - splitlastunderscore)], collapse='_') })
+				}
 				# check the presence of all strains in alignment (as it may be eluded in bipart coding)
 				excl.strains = setdiff(ltax, rownames(lcds.aln[[g]]))
 			}else{ excl.strains = NULL }
@@ -109,19 +117,24 @@ plotHiLDSeqTypes = function(genes, dbbiparts, gtdet, ltax, dir.out=NULL, lcds.al
 	genocounts = apply(matprofseqtypes, 2, function(x){nlevels(as.factor(x))})
 	barplot(genocounts, names.arg=genes[colnames(matprofseqtypes)], cex.lab=0.5, las=2, ylab='number of distinct genotypes')
 	coords = t(simplify2array(strsplit(genenames, split='_|-')))
-	colnames(coords) = c('locus_tag', 'b', 'e', 'gene', 'pb', 'pe')
-	gene.begin = as.numeric(coords[,'b']) + (as.numeric(coords[,'pb'])-1)
-	gene.end = apply(cbind((as.numeric(coords[,'b']) + (as.numeric(coords[,'pe'])-1)), as.numeric(coords[,'e'])), 1, min)
-	coordgenocounts = cbind(coords[,c('locus_tag', 'gene')], gene.begin, gene.end, genocounts)
+#~ 	colnames(coords) = c('locus_tag', 'b', 'e', 'gene', 'pb', 'pe')
+	colnames(coords) = c('gene', 'pb', 'pe')
+#~ 	gene.begin = as.numeric(coords[,'b']) + (as.numeric(coords[,'pb'])-1)
+	gene.begin = as.numeric(coords[,'pb'])
+#~ 	gene.end = apply(cbind((as.numeric(coords[,'b']) + (as.numeric(coords[,'pe'])-1)), as.numeric(coords[,'e'])), 1, min)
+	gene.end = as.numeric(coords[,'pe'])
+#~ 	coordgenocounts = cbind(coords[,c('locus_tag', 'gene')], gene.begin, gene.end, genocounts)
+	coordgenocounts = cbind(coords[,'gene'], gene.begin, gene.end, genocounts)
+	colnames(coordgenocounts) = c('gene', 'gene.begin', 'gene.end', 'genocounts')
 	coordgenocountsext = coordgenocounts[1,]
 	for (i in 2:dim(coordgenocounts)[1]){
-		intercoord = c(as.numeric(coordgenocounts[i-1,'gene.end'])+1, as.numeric(coordgenocounts[i,'gene.begin'])-1)
-		if (intercoord[1] < intercoord[2]){
-			interline = c('intergene', 'intergene', intercoord, 0)
-			coordgenocountsext = rbind(coordgenocountsext, interline, coordgenocounts[i,])
-		}else{
+#~ 		intercoord = c(as.numeric(coordgenocounts[i-1,'gene.end'])+1, as.numeric(coordgenocounts[i,'gene.begin'])-1)
+#~ 		if (intercoord[1] < intercoord[2]){
+#~ 			interline = c('intergene', 'intergene', intercoord, 0)
+#~ 			coordgenocountsext = rbind(coordgenocountsext, interline, coordgenocounts[i,])
+#~ 		}else{
 			coordgenocountsext = rbind(coordgenocountsext, coordgenocounts[i,])
-		}
+#~ 		}
 	}
 	write.table(coordgenocountsext, file=paste(dir.out, '/count_genotypes_rvt', minrbl, '_msw', minbs, '.tab', sep=''), sep='\t', quote=F, row.names=F)
 	
@@ -130,8 +143,8 @@ plotHiLDSeqTypes = function(genes, dbbiparts, gtdet, ltax, dir.out=NULL, lcds.al
 	if (!is.null(lcds.aln) & !is.null(dir.out)){ write.table(matprofseqtypes, file=paste(dir.out, 'Seq-Type_defining_biparts.tab', sep='/'), sep='\t') }
 	# matrix of alleles per gene
 	nst = max(matprofseqtypes, na.rm=TRUE)
-	heatmap.2(matprofseqtypes, distfun=distcat, Colv=NULL,
-	 col='coul', breaks=c(seq(-1, nst)+0.5),
+	heatmap.2(matprofseqtypes, distfun=distcat, Colv=NULL, dendrogram='none',
+	 col='coul', breaks=seq(-1, nst)+0.5,
 	 trace='none', notecol='black', cexRow=1.5 , cexCol=1.5, margins = c(12, 12),
 	 main=paste('Profiles of sequence types defined with\nrelative branch length >', minrbl, 'and branch_support >', minbs)) # , cellnote=matprofseqtypes
 	
@@ -173,6 +186,12 @@ if (length(carg)>4){
 	print(paste('read genotype classifications in', dircladeprofile))
 	dbbiparts = carg[5]
 	gtdet = NULL
+	if (length(carg)>5){ 
+		# to split the gene tree tip/alignment sequence name at the n-th rightmost '_' and keep the left part
+		splitlastunderscore = as.numeric(carg[6])
+	}else{
+		splitlastunderscore = NULL
+	}
 }else{
 	stop("deprecated use!")
 	print(paste('read bipartition tables in', dircladeprofile))
@@ -185,13 +204,15 @@ diroutseqtypes = paste(dirout, paste(radout, 'SeqType_alns', sep='-'), sep='/')
 ltax = scan(paste(dircladeprofile, 'taxlabels', sep='/'), what='character')
 # gene list
 genenames = readLines(nfgenenames)
-# get order by coordinates
-genecoords = as.data.frame(t(sapply(genenames, function(x){ as.numeric(strsplit(strsplit(x, split='_')[[1]][2], split='-')[[1]]) })))
-genecoordorder = order(genecoords[,1])
-genenames = genenames[genecoordorder]
+print(genenames)
+#~ # get order by coordinates
+#~ genecoords = as.data.frame(t(sapply(genenames, function(x){ as.numeric(strsplit(strsplit(x, split='_')[[1]][2], split='-')[[1]]) })))
+#~ genecoordorder = order(genecoords[,1])
+#~ genenames = genenames[genecoordorder]
 # make short gene names
-gnames = sapply(genenames, function(x){ paste(strsplit(x, split='_')[[1]][3:4], collapse='_') })
-genes = gnames[genenames]
+#~ gnames = sapply(genenames, function(x){ paste(strsplit(x, split='_')[[1]][3:4], collapse='_') })
+#~ genes = gnames[genenames]
+genes = genenames
 names(genes) = genenames
 names(genenames) = genes
 
@@ -217,7 +238,7 @@ llmatprofseqtypes = lapply(c(2), function(minrbl){
 #~ 		mainfig = minrbl==3 & minbs==0.9
 #~ 		mainfig = minrbl==0.02 & minbs==0.9
 #~ 		mainfig = minrbl==0.15 & minbs==0.9
-		matprofseqtypes = plotHiLDSeqTypes(genes, dbbiparts, gtdet, ltax, lcds.aln=lcds.aln, minrbl=minrbl, relative.lengths=F, term.branch.standard=T, dir.out=diroutseqtypes, minbs=minbs)
+		matprofseqtypes = plotHiLDSeqTypes(genes, dbbiparts, gtdet, ltax, lcds.aln=lcds.aln, minrbl=minrbl, relative.lengths=F, term.branch.standard=T, dir.out=diroutseqtypes, minbs=minbs, splitlastunderscore=splitlastunderscore)
 		if (mainfig){
 			dir.create(diroutseqtypes, showWarning=F)
 			lcds.stconsaln = exportSeqTypesAlignments(matprofseqtypes, lcds.aln, dir.out=diroutseqtypes) #, gname.long.alias=genenames

@@ -342,3 +342,26 @@ for (bip in unique(cgt[order(cgt$track.size, decreasing=T),'bipart'])[1:21]){
 	n = n + 1
 }
 dev.off()
+
+## EXPERIMENTAL
+# tentative detection of long-range LD = conservation of phylogenetic pattern accross loci
+pdf(paste(dircladeprofile, 'test_longLD_bipart.pdf', sep='/'), width=25, height=25)
+# clustering
+plot(hclust(d=dist(t(PPbiparts), method='euclidean'), method='complete'), main='Post. Prob. Support')
+plot(hclust(d=dist(t(compPPbiparts), method='euclidean'), method='complete'), main='Compatibility')
+# heatmap of covariance matrix
+covPPbiparts = cov(PPbiparts)
+heatmap.2(covPPbiparts, Rowv=F, Colv=F, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition support across loci')
+covcompPPbiparts = cov(compPPbiparts)
+heatmap.2(covcompPPbiparts, Rowv=F, Colv=F, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition compatbility across loci')
+# must correct for non-independence
+# and account for mostly empty signal leading to limited correlation
+# PCoA gives decent insight. cf. Ane C. et al. 2007 Bayesian Estimation of Concordance among Gene Trees. Mol. Biol. Evol. 24(2):412-426
+pcoPPbiparts = dudi.pco(dist(t(PPbiparts)), scannf=F, nf=4)
+s.label(pcoPPbiparts$li, xax=1, yax=2)
+s.label(pcoPPbiparts$li, xax=3, yax=4)
+pcocompPPbiparts = dudi.pco(dist(t(compPPbiparts)), scannf=F, nf=4)
+s.label(pcocompPPbiparts$li, xax=1, yax=2)
+s.label(pcocompPPbiparts$li, xax=3, yax=4)
+# shows relationships but does not demonstrate closeness of a group of genes relative to others
+dev.off()
