@@ -13,7 +13,7 @@ sample.size = function(x, na.rm=F){
 	return(ifelse(n>0, n, NA))
 }
 
-loadLDrollTables = function(ldtabdir, min.snp.density=20){	
+loadLDrollTables = function(ldtabdir, file.rad=tablename, min.snp.density=20){	
 	ldrolltables = lapply(names(metrics), function(LDmetric){
 		if (file.exists(file.path(ldtabdir, sprintf('LD_%s.%s.RData', LDmetric, tablename)))){
 			load(file.path(ldtabdir, sprintf('LD_%s.%s.RData', LDmetric, tablename)))
@@ -63,7 +63,7 @@ compareExp2Sim = function(exptable, simtable, averagefuns=c('mean', 'median')){
 	})
 	for (average in averagefuns){
 		CIbounds = getCIbound(simtable, averagefun=averagefun)
-		exptable[,sprintf('in.sim.IC0.95', average)] = (exptable$meanldrsub < CIbounds[[1]][expsimpos] | exptable$meanldrsub > CIbounds[[2]][expsimpos])
+		exptable[,sprintf('in.sim.%s.IC0.95', average)] = (exptable$meanldrsub < CIbounds[[1]][expsimpos] | exptable$meanldrsub > CIbounds[[2]][expsimpos])
 	}
 	invisible(exptable)
 }
@@ -108,15 +108,15 @@ plotGenomicMapStatSummary = function(simldmetable, averagefuns=c('mean', 'median
 	}
 }
 
-main = function(opt){
+SummarizeExpAndSimulGenomeWideLD = function(opt, file.rad=tablename){
 
-	simldmetable = loadAndCombineSimLDrollTables(opt$resampldir, min.snp.density=opt$nbsnp)
+	simldmetable = loadAndCombineSimLDrollTables(opt$resampldir, file.rad=file.rad, min.snp.density=opt$nbsnp)
 	if (!is.null(opt$outtab)){ 
 		write.table(simldmetable, file=opt$outtab, row.names=F, col.names=T, quote=F, sep='\t')
 	}
 	if (!is.null(opt$expdir)){
 		# additional data to be compared to the simulations
-		expldrollsub = loadLDrollTables(opt$expdir, min.snp.density=opt$nbsnp)
+		expldrollsub = loadLDrollTables(opt$expdir, file.rad=file.rad, min.snp.density=opt$nbsnp)
 		compareExp2Sim(expldrollsub, simldmetable, averagefun=average)
 	}else{ expldrollsub = NULL }
 	
@@ -156,6 +156,6 @@ if (identical(environment(), globalenv())){
 	if ( is.null(opt$outtab      ) ){ opt$outtab = sprintf("%s/%s_summary.tab", dirname(opt$resampldir), opt$datasetname)}
 	if ( is.null(opt$outpdf      ) ){ opt$outpdf = sprintf("%s/%s_summary%s.pdf", dirname(opt$resampldir), opt$datasetname, ifelse(!is.null(opt$expdir), sprintf("_vs_%s", basename(opt$expdir)), ""))}
 
-	main(opt)
+	SummarizeExpAndSimulGenomeWideLD(opt)
 }
 	
