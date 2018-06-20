@@ -49,11 +49,13 @@ loadAndCombineSimLDrollTables = function(resampldir, file.rad=tablename, min.snp
 }
 
 getCIbounds = function(ldmetable, averagefun='median', plot.CI=F, ...){
-	lapply(c('lower', 'upper'), function(bound){ 
+	namebound = c('lower', 'upper')
+	CIbounds = lapply(namebound, function(bound){ 
 		CIbound = ldmetable[,sprintf('r2.%s.%s.IC0.95', bound, averagefun)] 
 		if (plot.CI) lines(ldmetable$reference.position, CIbound, ...)
 		return(CIbound)
-	})
+	}) ; names(CIbounds) = namebound
+	return(CIbounds)
 }
 
 compareExp2Sim = function(exptable, simtable, averagefuns=c('mean', 'median')){
@@ -63,7 +65,7 @@ compareExp2Sim = function(exptable, simtable, averagefuns=c('mean', 'median')){
 	})
 	for (averagefun in averagefuns){
 		CIbounds = getCIbounds(simtable, averagefun=averagefun)
-		exptable[,sprintf('in.sim.%s.IC0.95', averagefun)] = (exptable$meanldrsub < CIbounds[[1]][expsimpos] | exptable$meanldrsub > CIbounds[[2]][expsimpos])
+		exptable[,sprintf('out.sim.%s.IC0.95', averagefun)] = (exptable$meanldrsub < CIbounds[['lower']][expsimpos] | exptable$meanldrsub > CIbounds[['upper']][expsimpos])
 	}
 	invisible(exptable)
 }
