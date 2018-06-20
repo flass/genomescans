@@ -41,9 +41,9 @@ getAverageAndCI = function(LDmetric, ldrollsubtables, n.sims){
 	return(cbind(ldrollsubtables[[1]][,mergecols], ldstats))
 }
 
-loadAndCombineSimLDrollTables = function(resampldir, min.snp.density=20){
+loadAndCombineSimLDrollTables = function(resampldir, file.rad=tablename, min.snp.density=20){
 	sims = list.files(resampldir, full.names=T)
-	simldrollsubtables = lapply(sims, loadLDrollTables, min.snp.density)
+	simldrollsubtables = lapply(sims, loadLDrollTables, file.rad=file.rad, min.snp.density=min.snp.density)
 	simldmetables = lapply(names(metrics), getAverageAndCI, ldrollsubtables=simldrollsubtables, n.sims=length(sims))
 	simldmetable = merge(simldmetables[[1]], simldmetables[[2]], by=mergecols, all=T, sort=F)
 }
@@ -61,28 +61,28 @@ compareExp2Sim = function(exptable, simtable, averagefuns=c('mean', 'median')){
 	expsimpos = sapply(exptable$reference.position, function(x){ 
 		i = which(simtable$reference.position==x); if (length(i)==1){ return(i) }else{ return(NA) }
 	})
-	for (average in averagefuns){
-		CIbounds = getCIbound(simtable, averagefun=averagefun)
-		exptable[,sprintf('in.sim.%s.IC0.95', average)] = (exptable$meanldrsub < CIbounds[[1]][expsimpos] | exptable$meanldrsub > CIbounds[[2]][expsimpos])
+	for (averagefun in averagefuns){
+		CIbounds = getCIbounds(simtable, averagefun=averagefun)
+		exptable[,sprintf('in.sim.%s.IC0.95', averagefun)] = (exptable$meanldrsub < CIbounds[[1]][expsimpos] | exptable$meanldrsub > CIbounds[[2]][expsimpos])
 	}
 	invisible(exptable)
 }
 
 plotGenomicMapStatSummary = function(simldmetable, averagefuns=c('mean', 'median'), opt, n.sims, expldrollsub=NULL){
-	for (average in averagefuns){
+	for (averagefun in averagefuns){
 		par(mar=c(8,8,8,8))
-		plot(simldmetable$reference.position, simldmetable[,sprintf('r2.%s', average)],
+		plot(simldmetable$reference.position, simldmetable[,sprintf('r2.%s', averagefun)],
 		 col='white',
 		 ylab=sprintf("LD strength (r^2) in\n%dbp-wide windows", opt$windowsize), xlab="reference genome coordinates",
 		 main=sprintf("%s (%d combined simulations) - LD scan with fixed-size windows", opt$datasetname, n.sims)
 		)
 		abline(h=1:10*(1/10), col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
-		CIbounds = getCIbound(simldmetable, averagefun=averagefun, plot.CI=T, col='slategrey')
-		signifpoints = simldmetable[,sprintf('Fisher.%s', average)] > opt$signifthresh
-		lines(simldmetable$reference.position, simldmetable[,sprintf('r2.%s', average)], col='blue')
-		points(simldmetable$reference.position[signifpoints], simldmetable[signifpoints, sprintf('r2.%s', average)], pch=20, col='purple')
-		legtext = c(sprintf("%s of %d simulations", average, n.sims),
-					"(when significantly higher than the the genomic basal level)", sprintf("95%% confidence interval around %s", average))
+		CIbounds = getCIbounds(simldmetable, averagefun=averagefun, plot.CI=T, col='slategrey')
+		signifpoints = simldmetable[,sprintf('Fisher.%s', averagefun)] > opt$signifthresh
+		lines(simldmetable$reference.position, simldmetable[,sprintf('r2.%s', averagefun)], col='blue')
+		points(simldmetable$reference.position[signifpoints], simldmetable[signifpoints, sprintf('r2.%s', averagefun)], pch=20, col='purple')
+		legtext = c(sprintf("%s of %d simulations", averagefun, n.sims),
+					"(when significantly higher than the the genomic basal level)", sprintf("95%% confidence interval around %s", averagefun))
 		legcol = c('blue', 'purple', 'slategrey')
 		leglwd = c(1, 3, 1)
 		legend('topleft', legend=legtext, col=legcol, lwd=leglwd, bg='white')
@@ -94,10 +94,10 @@ plotGenomicMapStatSummary = function(simldmetable, averagefuns=c('mean', 'median
 			abline(h=1:10*(1/10), col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
 			points(x=expldrollsub$reference.position, y=expldrollsub$meanldrsub,
 			 col=ifelse(expldrollsub$logcompldfisub > opt$signifthresh, 'red', 'grey'),
-			 pch=ifelse(expldrollsub[,sprintf('in.sim.IC0.95', average)], 1, 46),
+			 pch=ifelse(expldrollsub[,sprintf('in.sim.IC0.95', averagefun)], 1, 46),
 			 cex=0.5)
-			legtext = c(sprintf("out of 95%% confidence interval around simul %s", average),
-						 sprintf("within 95%% confidence interval around simul %s", average),
+			legtext = c(sprintf("out of 95%% confidence interval around simul %s", averagefun),
+						 sprintf("within 95%% confidence interval around simul %s", averagefun),
 						 "significantly higher than the genomic basal level",
 						 "not significantly higher")
 			legpch = c(1, 46, 20, 20)
@@ -114,17 +114,17 @@ SummarizeExpAndSimulGenomeWideLD = function(opt, file.rad=tablename){
 	if (!is.null(opt$outtab)){ 
 		write.table(simldmetable, file=opt$outtab, row.names=F, col.names=T, quote=F, sep='\t')
 	}
-	if (!is.null(opt$expdir)){
+	if (!(is.null(opt$expdir) | is.na(opt$expdir))){
 		# additional data to be compared to the simulations
 		expldrollsub = loadLDrollTables(opt$expdir, file.rad=file.rad, min.snp.density=opt$nbsnp)
-		compareExp2Sim(expldrollsub, simldmetable, averagefun=average)
+		expldrollsub = compareExp2Sim(expldrollsub, simldmetable)
 	}else{ expldrollsub = NULL }
 	
 	if (!is.null(opt$outpdf)){ 
 		### genomic map plot of stat summary
 		pdf(file=opt$outpdf, width=15, height=10,
 		 title=sprintf("%s - local LD scan - windows %dbp", opt$datasetname, opt$windowsize))
-		plotGenomicMapStatSummary(ldmetable, averagefuns=c('mean', 'median'), opt=opt, n.sims=length(sims), expldrollsub=expldrollsub)
+		plotGenomicMapStatSummary(ldmetable, opt=opt, n.sims=length(sims), expldrollsub=expldrollsub)
 		dev.off()
 	}	
 	invisible( list(simldmetable=simldmetable, expldrollsub=expldrollsub) )
