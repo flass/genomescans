@@ -13,13 +13,13 @@ sample.size = function(x, na.rm=F){
 	return(ifelse(n>0, n, NA))
 }
 
-loadLDrollTables = function(ldtabdir, file.rad=tablename, min.snp.density=20){	
+loadLDrollTables = function(ldtabdir, file.rad="", min.snp.density=20){	
 	ldrolltables = lapply(names(metrics), function(LDmetric){
-		if (file.exists(file.path(ldtabdir, sprintf('LD_%s.%s.RData', LDmetric, tablename)))){
-			load(file.path(ldtabdir, sprintf('LD_%s.%s.RData', LDmetric, tablename)))
+		if (file.exists(file.path(ldtabdir, sprintf('%sLD_%s.%s.RData', file.rad, LDmetric, tablename)))){
+			load(file.path(ldtabdir, sprintf('%sLD_%s.%s.RData', file.rad, LDmetric, tablename)))
 			return(list(ldrollsub=ldrollsub, rollsubsnpdens=rollsubsnpdens))
 		}else{
-			ldrollsub = read.table(file.path(ldtabdir, sprintf('LD_%s.%s.tab', LDmetric, tablename)), row.names=1, header=T)
+			ldrollsub = read.table(file.path(ldtabdir, sprintf('%sLD_%s.%s.tab', file.rad, LDmetric, tablename)), row.names=1, header=T)
 			return(list(ldrollsub=ldrollsub))
 		}
 	})
@@ -41,7 +41,7 @@ getAverageAndCI = function(LDmetric, ldrollsubtables, n.sims){
 	return(cbind(ldrollsubtables[[1]][,mergecols], ldstats))
 }
 
-loadAndCombineSimLDrollTables = function(resampldir, file.rad=tablename, min.snp.density=20){
+loadAndCombineSimLDrollTables = function(resampldir, file.rad="", min.snp.density=20){
 	sims = list.files(resampldir, full.names=T)
 	simldrollsubtables = lapply(sims, loadLDrollTables, file.rad=file.rad, min.snp.density=min.snp.density)
 	simldmetables = lapply(names(metrics), getAverageAndCI, ldrollsubtables=simldrollsubtables, n.sims=length(sims))
@@ -110,7 +110,7 @@ plotGenomicMapStatSummary = function(simldmetable, averagefuns=c('mean', 'median
 	}
 }
 
-SummarizeExpAndSimulGenomeWideLD = function(opt, file.rad=tablename){
+SummarizeExpAndSimulGenomeWideLD = function(opt, file.rad=""){
 
 	simldmetable = loadAndCombineSimLDrollTables(opt$resampldir, file.rad=file.rad, min.snp.density=opt$nbsnp)
 	if (!is.null(opt$outtab)){ 
