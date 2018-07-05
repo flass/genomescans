@@ -332,8 +332,23 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 		lnfgenebayesresults = getFileNameFromPat(lnfbayesresults, ngene)
 		# get taxon corespondence of taxonomic profile an consensus gene tree
 		nfconstree = getFileNameFromPat(lnfgenebayesresults, '.con.tre', nbmatch=1)[0]
-		dnexconstree = tree2.read_nexus("%s/%s"%(dirbayesresults, nfconstree), returnDict=True, allLower=False)
-		genetree = dnexconstree['tree']['con_50_majrule']
+		if '.nwk' in nfconstree:
+			genetree = tree2.Node(file="%s/%s"%(dirbayesresults, nfconstree), returnDict=True, allLower=False, leafNamesAsNum=True)
+			# emuate nexus
+			if not ltaxall:
+				dnexconstree = {'taxlabels':genetree.get_leaf_labels()}
+			else:
+				dnexconstree = {'taxlabels':ltaxall}
+			# correct branch support scale if detects than higher than 1.0 (typically up to 100)
+			lbs = [node.bs() for node in genetree if (node.bs() is not None)]
+			if lbs and max(lbs)> 1:
+				# correct scale
+				for node in genetree:
+					if node.bs() is not None:
+						node.set_bs(node.bs()/100)
+		else:
+			dnexconstree = tree2.read_nexus("%s/%s"%(dirbayesresults, nfconstree), returnDict=True, allLower=False)
+			genetree = dnexconstree['tree']['con_50_majrule']
 		#~ ltax = dnexconstree['taxlabels']
 		if namesubstrpat:
 			### retain only matches input regex pattern in sequence names; no match will lead to an error; only the first of several match is used
@@ -353,7 +368,7 @@ def main(nflngenes, dirbayesresults, bsthreshrefbip, bsthreshsampbip, outdir, bi
 			ltax = dnexconstree['taxlabels']
 		# replace aliased strain names
 		ltax = [dalias.get(tax, tax) for tax in ltax]
-		if verbose: print "ltax: %s"%repr(ltax)	
+		if verbose: print "ltax: %s"%repr(ltax)
 		
 		dtaxorder = {}
 		compltaxset = []

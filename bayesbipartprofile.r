@@ -231,8 +231,10 @@ for (nlPPb in names(lPPb)){
 
 # clades with >= 3 sample/strains
 largeclades = dbbiparts$size_smallpart[as.numeric(nrbiparts)] >= minsizclades
+print(sprintf("found %d large clades", length(which(largeclades))))
 # 2-strain clades ("cherries")
 cherries = dbbiparts$size_smallpart[as.numeric(nrbiparts)] == 2
+print(sprintf("found %d cherry clades (strain pairs)", length(which(cherries))))
 # row labelling showing the small clade's sample names for biparts #cherry [cherries]
 cherrylabs = sapply(dbbiparts$profile[as.numeric(nrbiparts)], translateBipartToTaxSet, ltax=ltax, value='smallclade', as.vector=TRUE)
 
