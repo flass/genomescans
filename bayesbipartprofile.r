@@ -22,6 +22,20 @@ printinfomatrix = function(m){
 	print(colnames(m))
 }
 
+matCorPval = function(mat, by='col', Bonf.correc=T, log=T, minpval=2e-16){
+	i = list(row=1, col=2)[[by]]
+	cpv = apply(mat, i, function(x){
+		apply(mat, i, function(y){
+			ct = cor.test(x, y)
+			return(ct$p.value)
+		})
+	})
+	N = dim(cpv)[1]
+	if (Bonf.correc==T){ cpv = cpv*(N*(N-1)/2) }
+	if (log==T){ cpv = -log10(cpv+minpval) }
+	return(cpv)
+}
+
 plotHeatMapBipartGenomeDensity = function(mat, bip.filter=NULL, gene.filter=NULL, gene.names=gnames, main=NULL, mark.consensus.bipart=NULL,
  minsumPPovergenes=1, minPPamonggenes=NULL, heatvariable='posterior probability', densfun=function(x){sum(x, na.rm=T)},
  lab.bip=NULL, dendro.dist.bips=FALSE, heatmapengine='heatmap', col.palette=NULL, col.na=par('bg'), side.cols=NULL){
@@ -363,8 +377,18 @@ heatmap.2(covcompPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, 
 heatmap.2(t(apply(covPPbiparts, 1, function(x){ x / max(x) })), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition support across loci (scaled by row)')
 heatmap.2(t(apply(covcompPPbiparts, 1, function(x){ x / max(x) })), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition compatbility across loci (scaled by row)')
 # heatmap of correlation matrix
-heatmap.2(cov2cor(covPPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition support across loci')
-heatmap.2(cov2cor(covcompPPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition compatbility across loci')
+corPPbiparts = cov2cor(covPPbiparts)
+corcompPPbiparts = cov2cor(covcompPPbiparts)
+heatmap.2(corPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition support across loci')
+heatmap.2(corcompPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition compatbility across loci')
+# heatmap of determination coefficient (R^2) matrix
+heatmap.2(corPPbiparts^2, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='R^2 of bipartition support across loci')
+heatmap.2(corcompPPbiparts^2, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='R^2 of bipartition compatbility across loci')
+#~ # heatmap of correlation significance = t-test p-value matrix
+#~ heatmap.2(matCorPval(PPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='Significance of correlation (-log10(t-test p-val))\nof bipartition support across loci')
+#~ heatmap.2((matCorPval(compPPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='Significance of correlation (-log10(t-test p-val))\nof bipartition compatbility across loci')
+
+
 
 # must correct for non-independence
 # and account for mostly empty signal leading to limited correlation

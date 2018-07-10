@@ -9,7 +9,7 @@ Please cite this paper if using any of the software below.
 The bayesbipartprofile suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and search for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
 
 Then, the [bayesbipartprofile.r] script builds matrices of bipartition support (two metrics are reported: posterior probability and compatibility score) across loci to detect conserved tracks of clonal phylogenetic structure, i.e. haplotypes, and provide text table and graphic output.
-This includes a map of phylogenetic haplotypes, and heatmaps of split profile correlation matrices, that provide a direct insight into *long-range linkage disequilibrium (LD)*.
+This includes a map of phylogenetic haplotypes, and heatmaps of split profile correlation matrices, that provide a direct insight into linkage disequilibrium (LD) between genes, i.e. *long-range LD*.
 
 Example:
 ```sh
@@ -18,9 +18,9 @@ python bayesbipartprofile.py --ltax /path/to/orderred_taxon_list --bs.thresh.ref
 # make correlation matrices and plots 
 bayesbipartprofile.r --gene.list.is.ordered --new /path/to/bayesbipartprofile_output_directory
 ```
-Below is an example of the matrix of bipartition compatibility score correlation between genes in a dataset of 142 HCMV genomes (data from [Lassalle et al. (2016)]):
+Below is an example of the matrix of bipartition compatibility score correlation (R^2) between genes in a dataset of 142 HCMV genomes (data from [Lassalle et al. (2016)]):
 
-![HCMV_bipart_compat_cor]
+![HCMV_bipart_compat_r2]
 
 
 ## [genome-wide_localLD_scan.r](https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r)
@@ -77,4 +77,4 @@ A requirement to use GARD is to specify the location of the `mpirun` command and
 [bayesbipartprofile.r]: https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r
 [genome-wide_localLD_scan.r]: https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r
 [utils-phylo.r]: https://github.com/flass/genomescans/blob/master/utils-phylo.r
-[HCMV_bipart_compat_cor]: https://github.com/flass/genomescans/blob/master/figures/HCMV_longLD_bipart_compat_score_correlation.png
+[HCMV_bipart_compat_r2]: https://github.com/flass/genomescans/blob/master/figures/HCMV_longLD_bipart_compat_score_r2.png
