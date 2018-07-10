@@ -1,7 +1,9 @@
 # genomescans
 R/Python modules and scripts for the analysis of aligned genomic sequences, to analyse of phylotype/haplotype structure of a genomic dataset and to perform genome-wide scans for the detection of hotspots of diversity, LD, etc.
 
-This software suite was used in the following paper: Lassalle, F. et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. *Virus Evolution* 2 (1), vew017.[doi:10.1093/ve/vew017](http://dx.doi.org/10.1093/ve/vew017), where mehtods are described in more detail. Please cite this paper if using any of the software below.
+This software suite and underlying methods were describedwas used in the following paper:  
+**Lassalle, F. et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. _Virus Evolution_ 2 (1), vew017.[doi:10.1093/ve/vew017](http://dx.doi.org/10.1093/ve/vew017).**  
+Please cite this paper if using any of the software below.
 
 ## bayesbipartprofile suite
 The bayesbipartprofile suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and search for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
@@ -75,4 +77,4 @@ A requirement to use GARD is to specify the location of the `mpirun` command and
 [bayesbipartprofile.r]: https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r
 [genome-wide_localLD_scan.r]: https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r
 [utils-phylo.r]: https://github.com/flass/genomescans/blob/master/utils-phylo.r
-[HCMV_bipart_compat_cor]: https://github.com/flass/genomescans/blob/master/figures/HCMV_longLD_bipart_compat_score_correlation.png
+[HCMV_bipart_compat_cor]: https://github.com/flass/genomescans/blob/master/figures/HCMV_longLD_bipart_compat_score_correlation.png?s=300
