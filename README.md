@@ -1,12 +1,13 @@
 # genomescans
-R/Python modules and scripts for the analysis of aligned genomic sequences, to analyse of phylotype/haplotype structure of a genomic dataset and to perform genome-wide scans for the detection of hotspots of diversity, LD, etc.
+R/Python modules and scripts for the analysis of recombination and linkage disequilibrium from aligned genomic sequences.
+It provides means to dissect the phylotype/haplotype structure of a genomic dataset per gene locus, to perform genome-wide sliding-window scans for the detection of hotspots of local LD, .
 
 This software suite and underlying methods were describedwas used in the following paper:  
 **Lassalle, F. et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. _Virus Evolution_ 2 (1), vew017.[doi:10.1093/ve/vew017](http://dx.doi.org/10.1093/ve/vew017).**  
 Please cite this paper if using any of the software below.
 
-## bayesbipartprofile suite
-The bayesbipartprofile suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and search for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
+## Bipartition profiling: searching for long-range LD between genes from bayesian phylogenetic tree samples
+The **bayesbipartprofile** suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and search for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
 
 Then, the [bayesbipartprofile.r] script builds matrices of bipartition support (two metrics are reported: posterior probability and compatibility score) across loci to detect conserved tracks of clonal phylogenetic structure, i.e. haplotypes, and provide text table and graphic output.
 This includes a map of phylogenetic haplotypes, and heatmaps of split profile correlation matrices, that provide a direct insight into linkage disequilibrium (LD) between genes, i.e. *long-range LD*.
@@ -18,14 +19,22 @@ python bayesbipartprofile.py --ltax /path/to/orderred_taxon_list --bs.thresh.ref
 # make correlation matrices and plots 
 bayesbipartprofile.r --gene.list.is.ordered --new /path/to/bayesbipartprofile_output_directory
 ```
+
 Below is an example of the matrix of bipartition compatibility score correlation (R^2) between genes in a dataset of 142 HCMV genomes (data from [Lassalle et al. (2016)]):
 
 ![HCMV_bipart_compat_r2]
 
 
-## [genome-wide_localLD_scan.r](https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r)
-The [genome-wide_localLD_scan.r] script performs a genome-wide search for *localized LD* based on the distribution of alleles at biallelic polymorphic sites (SNPs) in a multiple sequence alignment.
-It mainly rely on `linkageDisequilibrium()` and `rollStats()` functions in [utils-phylo.r] module.
+## Genome-wide local LD scan: sliding window scan for excess LD between neighbour sites
+The [genome-wide_localLD_scan.r] script performs a genome-wide search for LD between pairs of sites, specifically comparing the allelic patterns at biallelic polymorphic sites (bial-SNPs) in a multiple genome sequence alignment.
+
+First this script computes all r^2 or Fisher's exact test p-values for all pairs of bi-allelic sites in the genomes, and stores then in a matrix (saved in an `.RData` file). This can be restrained to neighbouring sites using `--max.dist.ldr` option to save computional time when ong-range LD is not of interest.
+
+Then, it performs a sliding-window scan, reporting a map (and peaks) of *local LD*, based on either the average r^2 in each window (`-- LD.metric=r2`), or by testing for local excess of LD compared to the whole genome (`-- LD.metric=Fisher`).
+
+The 'Fisher' version of the scan is done by selecting a number *b* (20 by default) of most-equally spaced biallelic sites in the focal window of size *w* (3000 bp by default) and retrieving the  Fisher's exact test p-values for all site pairs; the resulting p-value distribution is compared to a same-size quantile sample of the distributon observed over the whole genome within similar distances. This comparison is done with a Man-Witney-Wilcoxon U-test and its -log10-transformed p-value is reported as the **local LD index**. Note that windows with less than *b* biallelic sites are considered not fit for testing and are not reported; the size of windows *w* must therefore be adapted to the density of biallelic sites so to cover most of the genome, with a trade-off with precision on the location of reported LD peaks.
+
+Finally, long-range associations between sites are searched in the whole-genome LD matrix, using Bonferroni correction to scale Fisher's p-values.
 
 Many options are available, as described below (result of call with `--help` option):
 
@@ -64,13 +73,16 @@ Usage: ./genome-wide_localLD_scan.r [-[-genomic.aln|a] <character>] [-[-out.dir|
     -h|--help
 ```
 
-## detect_recomb scripts
+## Detection of recombination (occurence and breakpoints) in gene alignments
 
 These scripts provide wrappers for recombination detection programs, including GeneConv, PHI and HyPhy's SBP/GARD in particular.
+
+It is highly recommended to perform such a search for recombination breakpoints *prior* to any phylogenetic inference, including the bayesian gene tree sampling (e.g. with MrBayes) that provides the input for the **bayesbipartprofile** scripts descibed above.
 
 Both script allow the execution of many unique jobs. For that you've got to provide a list of tasks, i.e. a file in which each line is a path to a sequence alignment you desire to scan = one task. The Python script run tasks sequentially, and the qsub script (shell wrapper to submit parallel jobs of the Python script to a SGE type of computer cluster) can schedule them for execution in parallel, each job dealing with a chunk of tasks to be executed sequentially).
 
 A requirement to use GARD is to specify the location of the `mpirun` command and of the `hyphy/` root folder (set `mpipath` and `hyphypath` variables directly in the Python script, or set the `$mympi` and `$myhyphy` variables in the qsub script).
+
 
 [Lassalle et al. (2016)]: http://dx.doi.org/10.1093/ve/vew017
 [bayesbipartprofile.py]: https://github.com/flass/genomescans/blob/master/bayesbipartprofile.py
