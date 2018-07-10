@@ -6,6 +6,9 @@ This software suite and underlying methods were describedwas used in the followi
 **Lassalle, F. et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. _Virus Evolution_ 2 (1), vew017. [doi:10.1093/ve/vew017](http://dx.doi.org/10.1093/ve/vew017).**  
 Please cite this paper if using any of the software below.
 
+_____________________________________
+
+
 ## Bipartition profiling:
 ## searching for long-range LD between genes from bayesian phylogenetic tree samples
 
@@ -26,9 +29,9 @@ Below is an example of the matrix of bipartition compatibility score correlation
 
 ![HCMV_bipart_compat_r2]
 
+_____________________________________
 
-## Genome-wide local LD scan:
-## sliding window scan for excess LD between neighbour sites
+## Genome-wide local LD scan: sliding window scan for excess LD between neighbour sites
 The [genome-wide_localLD_scan.r] script performs a genome-wide search for LD between pairs of sites, specifically comparing the allelic patterns at biallelic polymorphic sites (bial-SNPs) in a multiple genome sequence alignment.
 
 First this script computes all r^2 or Fisher's exact test p-values for all pairs of bi-allelic sites in the genomes, and stores then in a matrix (saved in an `.RData` file). This can be restrained to neighbouring sites using `--max.dist.ldr` option to save computional time when ong-range LD is not of interest.
@@ -75,6 +78,9 @@ Usage: ./genome-wide_localLD_scan.r [-[-genomic.aln|a] <character>] [-[-out.dir|
                                to plot, and tedious to read as well [not done by default]
     -h|--help
 ```
+
+_____________________________________
+
 
 ## Detection of recombination (occurence and breakpoints) in gene alignments
 
