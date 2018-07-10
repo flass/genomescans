@@ -9,13 +9,101 @@ minsizclades = 3
 
 homedir = Sys.getenv()['HOME']
 
+#### core functions
+
 source(paste(homedir, 'scripts/misc/utils-phylo.r', sep='/'))
+
+#### print and plot functions
 
 printinfomatrix = function(m){
 	mname = deparse(substitute(m))
 	print(sprintf("class(%s): %s ; dim(%s): %s", mname, class(m), mname, paste(dim(m), collapse=', ')), quote=F)
 	print(sprintf("colnames(%s):", mname), quote=F)
 	print(colnames(m))
+}
+
+plotHeatMapBipartGenomeDensity = function(mat, bip.filter=NULL, gene.filter=NULL, gene.names=gnames, main=NULL, mark.consensus.bipart=NULL,
+ minsumPPovergenes=1, minPPamonggenes=NULL, heatvariable='posterior probability', densfun=function(x){sum(x, na.rm=T)},
+ lab.bip=NULL, dendro.dist.bips=FALSE, heatmapengine='heatmap', col.palette=NULL, col.na=par('bg'), side.cols=NULL){
+	print(main)
+	
+	if (is.null(bip.filter)){ bf = rep(TRUE, dim(mat)[1]) }else{ bf = bip.filter }
+	if (is.null(gene.filter)){ gf = rep(TRUE, dim(mat)[2]) }else{ gf = gene.filter }
+	
+	if (is.null(mark.consensus.bipart)){
+		bipcols = c(brewer.pal(9, 'Blues'))
+		m = mat
+	}else{
+		bipcols = c(brewer.pal(9, 'Blues'), brewer.pal(9, 'Reds'))
+		m = mark.consensus.bipart
+	}
+	# override color settings ; caution when mixing with 'mark.consensus.bipart'
+	if (!is.null(col.palette)){ bipcols = col.palette }
+	
+	bipdensity = apply(mat[,gf], 1, densfun)
+	
+	if (!is.null(minsumPPovergenes)){ denseprofile = bipdensity >= minsumPPovergenes
+	}else{ denseprofile = rep(TRUE, dim(mat)[1]) }
+	if (!is.null(minPPamonggenes)){ minprofile = apply(mat[,gf], 1, function(x){ any(x>minPPamonggenes, na.rm=T) })
+	}else{ minprofile = rep(TRUE, dim(mat)[1]) }
+	B = denseprofile & minprofile & bf
+	
+	denscols = c("#FFFFFF", brewer.pal(9, 'Reds'))
+	mindens = min(min(bipdensity[B], na.rm=T), 0, na.rm=T)
+	
+	ngenecol = 5
+	geneinfo = apply(mat[B,gf], 2, densfun)
+	infocols = c("#FFFFFF", brewer.pal(ngenecol, 'Reds'))
+	if (!is.null(side.cols)){
+		bipdenscols = sapply(bipdensity[B], function(s){ s = s - mindens ; denscols[ifelse(s>=10, 10, floor(s)+1)] })
+		geneinfocols = sapply(geneinfo, function(s){ infocols[ifelse(s<=1, 1, ifelse(s%/%4 >= ngenecol, ngenecol+1, (s%/%4)+2))] })
+	}else{
+		bipdenscols = geneinfocols = NULL
+	}
+	if (dendro.dist.bips){
+		distbips = dist(bips[B,], method='manhattan')
+		dendrobip = as.dendrogram(hclust(distbips, 'average'))
+	}else{ dendrobip = NA }
+	if (is.null(lab.bip)){ lR = rownames(m)[B]
+	}else{ lR = lab.bip[B] }
+	
+	if (!is.null(minsumPPovergenes)){
+		ylabel = paste("bipartitions with cumulative", heatvariable, ">=", minsumPPovergenes)
+	}else{ if (!is.null(minPPamonggenes)){
+		ylabel = paste("bipartitions with", heatvariable, ">=", minPPamonggenes, "in at least one gene")
+	}else{
+		ylabel = "bipartitions"
+	}}
+	if (is.null(main)){ main = heatvariable }
+	
+	heatmapfun = get(heatmapengine, inherits=T)
+	print(dim(m[B,gf]))
+	heatmapfun(data.matrix(m[B,gf]), Rowv=dendrobip, Colv=NA, revC=(heatmapengine=='heatmap' & !dendro.dist.bips), scale='none', col=bipcols, labCol=gene.names[gf], na.color=col.na, labRow=lR,
+	 main=main, xlab="Loci", ylab=ylabel, cex.main=2, cex.lab=2,
+	 trace='none', dendrogram='none')
+#~ 	 RowSideColors=bipdenscols, ColSideColors=geneinfocols,
+}
+
+plotHMBGDbyGenes = function(lPPB, lcabPPB, cherries, cherrylabs, gene.filter=NULL, focus.strains=NULL){
+	for (nlPPb in names(lPPb)){
+		mainlab = paste(nlPPb, 'of bipartitions across genes')
+		# 2-strain clades ("cherries")
+		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(mainlab, "(strain pairs)"),
+		 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1)
+		# 2-strain clades ("cherries") with strain names
+		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(mainlab, "(strain pairs)"),
+		 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1, lab.bip=sapply(cherrylabs, paste, collapse=', '))
+		if (!is.null(focus.strains)){
+			for (fs in focus.strains){
+				fsi = sapply(cherrylabs, function(x){ fs %in% x })
+				plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=(cherries & fsi), gene.names=gnames[genenames], main=paste(mainlab, " (strain pairs with ", fs,")", sep=''),
+				 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1, lab.bip=sapply(cherrylabs, paste, collapse='\n'))
+			}
+		}
+		 
+		# "larger" clades
+		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=largeclades, gene.names=gnames[genenames], main=paste(mainlab, "(clades of >= 3 strains)"), mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1)
+	}
 }
 
 carg = commandArgs(trailingOnly=TRUE)
@@ -142,91 +230,6 @@ consabsprescompPPbiparts = bipconsabspres + compPPbiparts
 rownames(consabsprescompPPbiparts) = rownames(compPPbiparts)
 colnames(consabsprescompPPbiparts) = colnames(compPPbiparts)
 printinfomatrix(consabsprescompPPbiparts)
-
-
-plotHeatMapBipartGenomeDensity = function(mat, bip.filter=NULL, gene.filter=NULL, gene.names=gnames, main=NULL, mark.consensus.bipart=NULL,
- minsumPPovergenes=1, minPPamonggenes=NULL, heatvariable='posterior probability', densfun=function(x){sum(x, na.rm=T)},
- lab.bip=NULL, dendro.dist.bips=FALSE, heatmapengine='heatmap', col.palette=NULL, col.na=par('bg'), side.cols=NULL){
-	print(main)
-	
-	if (is.null(bip.filter)){ bf = rep(TRUE, dim(mat)[1]) }else{ bf = bip.filter }
-	if (is.null(gene.filter)){ gf = rep(TRUE, dim(mat)[2]) }else{ gf = gene.filter }
-	
-	if (is.null(mark.consensus.bipart)){
-		bipcols = c(brewer.pal(9, 'Blues'))
-		m = mat
-	}else{
-		bipcols = c(brewer.pal(9, 'Blues'), brewer.pal(9, 'Reds'))
-		m = mark.consensus.bipart
-	}
-	# override color settings ; caution when mixing with 'mark.consensus.bipart'
-	if (!is.null(col.palette)){ bipcols = col.palette }
-	
-	bipdensity = apply(mat[,gf], 1, densfun)
-	
-	if (!is.null(minsumPPovergenes)){ denseprofile = bipdensity >= minsumPPovergenes
-	}else{ denseprofile = rep(TRUE, dim(mat)[1]) }
-	if (!is.null(minPPamonggenes)){ minprofile = apply(mat[,gf], 1, function(x){ any(x>minPPamonggenes, na.rm=T) })
-	}else{ minprofile = rep(TRUE, dim(mat)[1]) }
-	B = denseprofile & minprofile & bf
-	
-	denscols = c("#FFFFFF", brewer.pal(9, 'Reds'))
-	mindens = min(min(bipdensity[B], na.rm=T), 0, na.rm=T)
-	
-	ngenecol = 5
-	geneinfo = apply(mat[B,gf], 2, densfun)
-	infocols = c("#FFFFFF", brewer.pal(ngenecol, 'Reds'))
-	if (!is.null(side.cols)){
-		bipdenscols = sapply(bipdensity[B], function(s){ s = s - mindens ; denscols[ifelse(s>=10, 10, floor(s)+1)] })
-		geneinfocols = sapply(geneinfo, function(s){ infocols[ifelse(s<=1, 1, ifelse(s%/%4 >= ngenecol, ngenecol+1, (s%/%4)+2))] })
-	}else{
-		bipdenscols = geneinfocols = NULL
-	}
-	if (dendro.dist.bips){
-		distbips = dist(bips[B,], method='manhattan')
-		dendrobip = as.dendrogram(hclust(distbips, 'average'))
-	}else{ dendrobip = NA }
-	if (is.null(lab.bip)){ lR = rownames(m)[B]
-	}else{ lR = lab.bip[B] }
-	
-	if (!is.null(minsumPPovergenes)){
-		ylabel = paste("bipartitions with cumulative", heatvariable, ">=", minsumPPovergenes)
-	}else{ if (!is.null(minPPamonggenes)){
-		ylabel = paste("bipartitions with", heatvariable, ">=", minPPamonggenes, "in at least one gene")
-	}else{
-		ylabel = "bipartitions"
-	}}
-	if (is.null(main)){ main = heatvariable }
-	
-	heatmapfun = get(heatmapengine, inherits=T)
-	print(dim(m[B,gf]))
-	heatmapfun(data.matrix(m[B,gf]), Rowv=dendrobip, Colv=NA, revC=(heatmapengine=='heatmap' & !dendro.dist.bips), scale='none', col=bipcols, labCol=gene.names[gf], na.color=col.na, labRow=lR,
-	 main=main, xlab="Loci", ylab=ylabel, cex.main=2, cex.lab=2,
-	 trace='none', dendrogram='none')
-#~ 	 RowSideColors=bipdenscols, ColSideColors=geneinfocols,
-}
-
-plotHMBGDbyGenes = function(lPPB, lcabPPB, cherries, cherrylabs, gene.filter=NULL, focus.strains=NULL){
-for (nlPPb in names(lPPb)){
-		mainlab = paste(nlPPb, 'of bipartitions across genes')
-		# 2-strain clades ("cherries")
-		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(mainlab, "(strain pairs)"),
-		 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1)
-		# 2-strain clades ("cherries") with strain names
-		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=cherries, gene.names=gnames[genenames], main=paste(mainlab, "(strain pairs)"),
-		 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1, lab.bip=sapply(cherrylabs, paste, collapse=', '))
-		if (!is.null(focus.strains)){
-			for (fs in focus.strains){
-				fsi = sapply(cherrylabs, function(x){ fs %in% x })
-				plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=(cherries & fsi), gene.names=gnames[genenames], main=paste(mainlab, " (strain pairs with ", fs,")", sep=''),
-				 mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1, lab.bip=sapply(cherrylabs, paste, collapse='\n'))
-			}
-		}
-		 
-		# "larger" clades
-		plotHeatMapBipartGenomeDensity(lPPb[[nlPPb]], gene.filter=gene.filter, bip.filter=largeclades, gene.names=gnames[genenames], main=paste(mainlab, "(clades of >= 3 strains)"), mark.consensus.bipart=lcabPPb[[nlPPb]], minsumPPovergenes=1)
-	}
-}
 # PP support of bipartition accross genes
 
 # clades with >= 3 sample/strains
@@ -338,7 +341,7 @@ for (bip in unique(cgt[order(cgt$track.size, decreasing=T),'bipart'])[1:21]){
 	plot(c(0, PPbiparts[bip,], 0), ylim=c(-1,1), type='l', xaxt='n', yaxt='n', main=cgt$smallclade[cgt$bipart==bip][1], xlab='', ylab='Compatibility        Support    ')
 	axis(side=2, labels=abs(seq(-1,1,by=0.5)), at=seq(-1,1,by=0.5), las=2)
 	polygon(c(1, 1:(dim(PPbiparts)[2]+2), dim(PPbiparts)[2]+2), c(1, 0, PPbiparts[bip,], 0, 1), density=NA, col='lightblue')
-	polygon(1:(dim(PPbiparts)[2]+2), c(-1, rejPPbiparts[bip,]-1, -1), density=NA, col='navyblue')
+	polygon(1:(dim(PPbiparts)[2]+2), c(-1, -1*compPPbiparts[bip,], -1), density=NA, col='navyblue')
 	abline(h=0)
 	if (n%%nperpage==0){ axis(side=1, labels=c('', gnames, ''), at=1:(dim(PPbiparts)[2]+2), las=2) }
 	n = n + 1
@@ -353,9 +356,16 @@ plot(hclust(d=dist(t(PPbiparts), method='euclidean'), method='complete'), main='
 plot(hclust(d=dist(t(compPPbiparts), method='euclidean'), method='complete'), main='Compatibility')
 # heatmap of covariance matrix
 covPPbiparts = cov(PPbiparts)
-heatmap.2(covPPbiparts, Rowv=F, Colv=F, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition support across loci')
+heatmap.2(covPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition support across loci')
 covcompPPbiparts = cov(compPPbiparts)
-heatmap.2(covcompPPbiparts, Rowv=F, Colv=F, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition compatbility across loci')
+heatmap.2(covcompPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition compatbility across loci')
+# heatmap of covariance matrix, rows scaled by their maximum
+heatmap.2(t(apply(covPPbiparts, 1, function(x){ x / max(x) })), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition support across loci (scaled by row)')
+heatmap.2(t(apply(covcompPPbiparts, 1, function(x){ x / max(x) })), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition compatbility across loci (scaled by row)')
+# heatmap of correlation matrix
+heatmap.2(cov2cor(covPPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition support across loci')
+heatmap.2(cov2cor(covcompPPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition compatbility across loci')
+
 # must correct for non-independence
 # and account for mostly empty signal leading to limited correlation
 # PCoA gives decent insight. cf. Ane C. et al. 2007 Bayesian Estimation of Concordance among Gene Trees. Mol. Biol. Evol. 24(2):412-426
