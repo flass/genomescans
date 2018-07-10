@@ -22,22 +22,22 @@ chompnames = function(fullnames, genepat='^.+_(.+)_.+$'){
 ### script options
 
 spec = matrix(c(
-  'genomic.aln',   'a', 1, "character", "path to genomic alignment from which biallelic sites will be searched and LD tested",
-  'out.dir',       'o', 1, "character", "path to ouput folder; can be appended with the prefix to give to oupout files, e.g.: '/path/to/ouput/folder/file_prefix'",
-  'LD.metric',     'D', 2, "character", "metric to report from measurement of LD, one of: 'r2' (correlation coeff.), 'Fisher' (Local LD Index [default]: -log(10) p.value of a Man-Witney-Wilcoxon U-test comparing the local distribution of p-values of Fisher exact tests for pairs of neighbour biallelic sites within the window vs. in the whole genome)",
-  'excl.ref.label','r', 2, "character", "(comma-separated) name(s) of the (reference) genome to exclude from the analysis",
-  'window.size',   'w', 2, "integer",   "physical size (bp) of the sliding windows in which LD is evaluated [default: 3000]",
-  'step',          's', 2, "integer",   "step (bp) of the sliding windows in which LD is evaluated [default: 10]",
-  'nb.snp',        'm', 2, "integer",   "number of biallelic SNP within each window that are used for LD computation\n(windows with less than that are excluded from the report) [default: 20]",
-  'signif.thresh', 't', 2, "double",    "threshold of Local LD Index above which the observed LD is significant [default: 5]",
-  'feature.table', 'f', 2, "character", "path of ouput PDF file for plots",
-  'chomp.gene.names', 'C', 2, "character", "regular expression pattern to shortern gene names; default to '^.+_(.+)_.+$'; disable by providing all-matching pattern '(.+)'",
-  'threads',       'T', 2, "integer",    "number of parallel threds used for computation (beware of memory use increase) [default to 1: no parallel compuation]",
-  'max.dist.ldr',  'd', 2, "integer",    "maximum distance between pairs of bi-allelic sites for which to compute LD (in mumber of intervening bi-allelic sites ; Beware: this is not uniform !!! polymorphism density varry across the genome !!!); by default compute the full matrix, which is rarely that much bigger",
-  'max.gap',       'g', 2, "integer",    "maximum number of allowed missing sequences to keep a site in the alignement for LD and NucDiv computations",
-  'min.allele.freq','q', 2, "integer",    "minimum allele frequency (in count of sequences) in bi-alelic sites to be retained (minalfreq = 1 => all bi-allelic sites [default])",
-  'crazy.plot',    'K', 2, "integer",    "plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very tedious to plot, and to read as well [not doone by default]",
-  'help',          'h', 0, "logical",    ""
+  'genomic.aln',     'a', 1, "character", "path to genomic alignment from which biallelic sites will be searched and LD tested",
+  'out.dir',         'o', 1, "character", "path to an existing ouput folder; a prefix to give to oupout files can be appended, e.g.: '/path/to/ouput/folder/file_prefix'",
+  'LD.metric',       'D', 2, "character", "metric to report from measurement of LD, one of: 'r2' (correlation coeff.), 'Fisher' (Local LD Index [default]: -log(10) p.value of a Man-Witney-Wilcoxon U-test comparing the local distribution of p-values of Fisher exact tests for pairs of neighbour biallelic sites within the window vs. in the whole genome)",
+  'ref.label',       'r', 2, "character", "(comma-separated) label(s) of the genome sequence(s) to exclude from the analysis; the first is also assumed to be the reference genome and is used to translate alignment coordinates into reference genome coordinates",
+  'window.size',     'w', 2, "integer",   "physical size (bp) of the sliding windows in which LD is evaluated [default: 3000]",
+  'step',            's', 2, "integer",   "step (bp) of the sliding windows in which LD is evaluated [default: 10]",
+  'nb.snp',          'm', 2, "integer",   "number of biallelic SNP within each window that are used for LD computation\n(windows with less than that are excluded from the report) [default: 20]",
+  'signif.thresh',   't', 2, "double",    "threshold of Local LD Index above which the observed LD is significant [default: 5]",
+  'feature.table',   'f', 2, "character", "path to GenBank feature table file indicating CDSs and matching the reference sequence coordinates",
+  'chomp.gene.names','C', 2, "character", "regular expression pattern to shortern gene names; default to '^.+_(.+)_.+$'; disable by providing all-matching pattern '(.+)'",
+  'threads',         'T', 2, "integer",   "number of parallel threds used for computation (beware of memory use increase) [default to 1: no parallel compuation]",
+  'max.dist.ldr',    'd', 2, "integer",   "maximum distance between pairs of bi-allelic sites for which to compute LD (in mumber of intervening bi-allelic sites ; Beware: this is not uniform !!! polymorphism density varry across the genome !!!); by default compute the full matrix, which is rarely that much bigger",
+  'max.gap',         'g', 2, "integer",   "maximum number of allowed missing sequences to keep a site in the alignement for LD and NucDiv computations",
+  'min.allele.freq', 'q', 2, "integer",   "minimum allele frequency (in count of sequences) in bi-alelic sites to be retained (minalfreq = 1 => all bi-allelic sites [default])",
+  'crazy.plot',      'K', 2, "integer",   "plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very tedious to plot, and to read as well [not doone by default]",
+  'help',            'h', 0, "logical",   ""
 ), byrow=TRUE, ncol=5);
 opt = getopt(spec, opt=commandArgs(trailingOnly=T))
 
@@ -59,17 +59,17 @@ if ( is.null(opt$max.gap           ) ){ opt$max.gap           = 1         }
 if ( is.null(opt$min.allele.freq   ) ){ opt$min.allele.freq   = 1         }
 if ( is.null(opt$crazy.plot        ) ){ opt$crazy.plot        = -1        }
 
-
-
 signifthresh = 10^(-opt$signif.thresh)
 gapchars = c('-', 'N', 'n')	# various characters to consider as missing data
+
+opt$excl.labels = strsplit(opt$excl.ref.label, split',')[[1]]
+opt$ref.label = opt$excl.labels[1]
+genome.coord.str = sprintf('%s genome coordinates', opt$ref.label)
 
 print("will use the following parameters:", quote=F)
 print(opt)
 
-exclreflabels = strsplit(opt$excl.ref.label, split',')[[1]]
-
-## define path to result directory
+## define path to result directory and optionally output file prefix
 
 datasettag = ''
 
@@ -109,22 +109,18 @@ names(ldsearchparsub) = c('windowsize', 'step', 'maxsize', 'signifthresh')
 nucdivsearchpar = list(100, 1, 0.1)
 names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
 
-
-#~ opt$reflabel = 'Reference'	# label in the alignement of the strain to use for reference genome coordinates
-
 # define path to alignment file
 print(c('load genomic alignment from', opt$nfgenomeali), quote=F)
 datasetname = strsplit(basename(opt$nfgenomeali), '\\.')[[1]][1]
 prefull.aln = read.dna(opt$nfgenomeali, format='fasta', as.matrix=T)
-reflabels.i = which(rownames(prefull.aln) in exclreflabels)
-full.aln = prefull.aln[-reflabels.i,]
+full.aln = prefull.aln[-which(rownames(prefull.aln) in opt$excl.labels),]
 
 # compute correspondency between raw reference sequence and gapped alignement coordinates
 nfmap2ref = paste(opt$resultdir, paste('coordinatesFullAln2Ref', 'RData', sep='.'), sep='')
 if (file.exists(nfmap2ref)){ load(nfmap2ref)
 }else{
-	map.full2ref = fullAln2RefCoords(prefull.aln, opt$reflabel=opt$reflabel)
-	map.full2refnona = fullAln2RefCoords(prefull.aln, opt$reflabel=opt$reflabel, bijective=F)
+	map.full2ref = fullAln2RefCoords(prefull.aln, reflabel=opt$ref.label)
+	map.full2refnona = fullAln2RefCoords(prefull.aln, reflabel=opt$ref.label, bijective=F)
 	save(map.full2ref, map.full2refnona, file=nfmap2ref)
 }
 
@@ -285,7 +281,7 @@ if (file.exists(nflocld)){ load(nflocld)
 }
 
 
-hiLDfoci    = ldroll$reference.position[which(ldroll$compldfi < ldsearchpar$signifthresh)]
+#~ hiLDfoci    = ldroll$reference.position[which(ldroll$compldfi < ldsearchpar$signifthresh)]
 hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub < ldsearchparsub$signifthresh)]
 hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsearchpar$signifthresh)]
 
@@ -348,12 +344,12 @@ if (file.exists(opt$feature.table)){
 	hypervarloci = names(lcds.ref.i)[which(lcds.maxnucdiv[,2] > nucdivsearchpar$signifthresh)]
 	
 	if (opt$LD.metric=='Fisher'){
-		lcds.maxlogcompldfi = t(sapply(lcds.ref.i, function(cds.ref.i){ 
-			cds.pos.i = ldroll$reference.position %in% cds.ref.i
-			m = max(ldroll$logcompldfi[cds.pos.i], na.rm=T)
-			p = ldroll$reference.position[cds.pos.i & ldroll$logcompldfi==m][1]
-			return(c(p,m))
-		}))
+#~ 		lcds.maxlogcompldfi = t(sapply(lcds.ref.i, function(cds.ref.i){ 
+#~ 			cds.pos.i = ldroll$reference.position %in% cds.ref.i
+#~ 			m = max(ldroll$logcompldfi[cds.pos.i], na.rm=T)
+#~ 			p = ldroll$reference.position[cds.pos.i & ldroll$logcompldfi==m][1]
+#~ 			return(c(p,m))
+#~ 		}))
 		lcds.maxlogcompldfisub = t(sapply(lcds.ref.i, function(cds.ref.i){ 
 			cds.pos.i = ldrollsub$reference.position %in% cds.ref.i
 			m = max(ldrollsub$logcompldfisub[cds.pos.i], na.rm=T)
@@ -361,15 +357,15 @@ if (file.exists(opt$feature.table)){
 			return(c(p,m))
 		}))
 		
-		hiLDloci = names(lcds.ref.i)[which(lcds.maxlogcompldfi[,2] > -log10(ldsearchpar$signifthresh))]
+#~ 		hiLDloci = names(lcds.ref.i)[which(lcds.maxlogcompldfi[,2] > -log10(ldsearchpar$signifthresh))]
 		hiLDlocisub = rownames(lcds.maxlogcompldfisub)[which(lcds.maxlogcompldfisub[,2] > -log10(ldsearchparsub$signifthresh))]
 
-		hiLDgenes    = gnames[hiLDloci]
+#~ 		hiLDgenes    = gnames[hiLDloci]
 		hiLDgenessub =  gnames[hiLDlocisub]
-		write(hiLDloci, file=paste(opt$resultdir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, sprintf('hiLDloci.pval%g', ldsearchpar$signifthresh), sep='.'), sep=''))
+#~ 		write(hiLDloci, file=paste(opt$resultdir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, sprintf('hiLDloci.pval%g', ldsearchpar$signifthresh), sep='.'), sep=''))
 		write(hiLDlocisub, file=paste(opt$resultdir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, sprintf('hiLDloci.pval%g', ldsearchparsub$signifthresh), sep='.'), sep=''))
 		# ranked genes 
-		write(unique(chompnames(hiLDloci)[order(lcds.maxlogcompldfi[hiLDloci,2], decreasing=T)]), file=paste(opt$resultdir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, sprintf('hiLDgenes.pval%g', ldsearchpar$signifthresh), sep='.'), sep=''))
+#~ 		write(unique(chompnames(hiLDloci)[order(lcds.maxlogcompldfi[hiLDloci,2], decreasing=T)]), file=paste(opt$resultdir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, sprintf('hiLDgenes.pval%g', ldsearchpar$signifthresh), sep='.'), sep=''))
 		write(unique(chompnames(hiLDlocisub)[order(lcds.maxlogcompldfisub[hiLDlocisub,2], decreasing=T)]), file=paste(opt$resultdir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, sprintf('hiLDgenes.pval%g', ldsearchparsub$signifthresh), sep='.'), sep=''))
 	}
 }else{ lcds.ref.i = NULL }
@@ -391,19 +387,19 @@ pdf(file=paste(opt$resultdir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", 
 if (opt$LD.metric == 'Fisher'){
 	### summary and genomic map plots
 	par(mar=c(8,8,8,8))
-	# full data scan
-	plot(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$logcompldfi, ylab=sprintf('LD significance in\n%d biallelic site windows [-log10(p)]', ldsearchpar$windowsize), main=paste(datasettag, "LD scan with variable-size windows", sep='\n'), xlab=sprintf('%s genome coordinates', opt$reflabel), col='white')
-	abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
-	points(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$logcompldfi, col=ifelse(ldroll$compldfi < ldsearchpar$signifthresh, 'red', 'black'))
-	if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){ text(labels=paste(hiLDgenes[!is.na(hiLDgenes)], '\'', sep='\n'), x=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],1], y=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],2]+.5) }
-	physize = plotphysize(20, plot, type='l', xlab=sprintf('%s genome coordinates', opt$reflabel), ylab="Physical size of 20-SNP windows")
-	snpdens = ldsearchpar$windowsize/(physize[ldroll$foci])
-	plot(x=snpdens, y=ldroll$logcompldfi, ylab=sprintf("LD significance in\n%d biallelic site windows [-log10(p)]", ldsearchpar$windowsize), xlab="Biallelic SNP density in variable-size windows")
-	abline(lm(ldroll$logcompldfi ~ snpdens), col='red')
-	ct = cor.test(x=snpdens, y=ldroll$logcompldfi)
-	text(x=0.8, y=max(ldroll$logcompldfi), labels=sprintf("r = %g\np = %g", ct$est, ct$p.val))
+#~ 	# full data scan
+#~ 	plot(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$logcompldfi, ylab=sprintf('LD significance in\n%d biallelic site windows [-log10(p)]', ldsearchpar$windowsize), main=paste(datasettag, "LD scan with variable-size windows", sep='\n'), xlab=genome.coord.str, col='white')
+#~ 	abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
+#~ 	points(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$logcompldfi, col=ifelse(ldroll$compldfi < ldsearchpar$signifthresh, 'red', 'black'))
+#~ 	if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){ text(labels=paste(hiLDgenes[!is.na(hiLDgenes)], '\'', sep='\n'), x=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],1], y=lcds.maxlogcompldfi[hiLDloci[!is.na(hiLDgenes)],2]+.5) }
+#~ 	physize = plotphysize(20, plot, type='l', xlab=genome.coord.str, ylab="Physical size of 20-SNP windows")
+#~ 	snpdens = ldsearchpar$windowsize/(physize[ldroll$foci])
+#~ 	plot(x=snpdens, y=ldroll$logcompldfi, ylab=sprintf("LD significance in\n%d biallelic site windows [-log10(p)]", ldsearchpar$windowsize), xlab="Biallelic SNP density in variable-size windows")
+#~ 	abline(lm(ldroll$logcompldfi ~ snpdens), col='red')
+#~ 	ct = cor.test(x=snpdens, y=ldroll$logcompldfi)
+#~ 	text(x=0.8, y=max(ldroll$logcompldfi), labels=sprintf("r = %g\np = %g", ct$est, ct$p.val))
 	# subsampled data scan
-	plot(map.full2ref[ldrollsub$foci], ldrollsub$logcompldfisub, ylab=sprintf('LD significance in\n%dbp-wide windows [-log10(p)]', ldsearchparsub$windowsize), main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'), xlab=sprintf('%s genome coordinates', opt$reflabel), col='white')
+	plot(map.full2ref[ldrollsub$foci], ldrollsub$logcompldfisub, ylab=sprintf('LD significance in\n%dbp-wide windows [-log10(p)]', ldsearchparsub$windowsize), main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'), xlab=genome.coord.str, col='white')
 	# plot areas of NA's and low-coverage
 	pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub$compldfisub)], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, col='grey')
 	pb = sapply(lapply(rollsubsnpdens$foci[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, col='pink')
@@ -423,19 +419,19 @@ if (opt$LD.metric == 'Fisher'){
 }else{
 	### summary and genomic map plots
 	par(mar=c(8,8,8,8))
-	# full data scan
-	plot(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$meanldr, ylab=sprintf("LD strength (r^2) in\n%dbp-wide windows", ldsearchparsub$windowsize), main=paste(datasettag, "LD scan with variable-size windows", sep='\n'), xlab=sprintf('%s genome coordinates', opt$reflabel), col='white')
-	abline(h=1:10*(1/10), col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
-	qmeanldr = quantile(ldrollsub$meanldr, p=c(.95, .98), na.rm=T)
-	points(map.full2ref[ldrollsub$foci], ldrollsub$meanldr, col=ifelse(ldrollsub$meanldr > qmeanldr[1], 'red', 'black'))
-	physize = plotphysize(20, plot, type='l', xlab=sprintf('%s genome coordinates', opt$reflabel), ylab="Physical size of 20-SNP windows")
-	snpdens = ldsearchpar$windowsize/(physize[ldroll$foci])
-	plot(x=snpdens, y=ldroll$meanldr, ylab=sprintf("LD strength (r^2) in\n%d biallelic site windows", ldsearchpar$windowsize), xlab="Biallelic SNP density in variable-size windows")
-	abline(lm(ldroll$meanldr ~ snpdens), col='red')
-	ct = cor.test(x=snpdens, y=ldroll$meanldr)
-	text(x=0.8, y=max(ldroll$meanldr), labels=sprintf("r = %g\np = %g", ct$est, ct$p.val))
+#~ 	# full data scan
+#~ 	plot(map.full2ref[bialraregap.i[ldroll$foci]], ldroll$meanldr, ylab=sprintf("LD strength (r^2) in\n%dbp-wide windows", ldsearchparsub$windowsize), main=paste(datasettag, "LD scan with variable-size windows", sep='\n'), xlab=genome.coord.str, col='white')
+#~ 	abline(h=1:10*(1/10), col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
+#~ 	qmeanldr = quantile(ldrollsub$meanldr, p=c(.95, .98), na.rm=T)
+#~ 	points(map.full2ref[ldrollsub$foci], ldrollsub$meanldr, col=ifelse(ldrollsub$meanldr > qmeanldr[1], 'red', 'black'))
+#~ 	physize = plotphysize(20, plot, type='l', xlab=genome.coord.str, ylab="Physical size of 20-SNP windows")
+#~ 	snpdens = ldsearchpar$windowsize/(physize[ldroll$foci])
+#~ 	plot(x=snpdens, y=ldroll$meanldr, ylab=sprintf("LD strength (r^2) in\n%d biallelic site windows", ldsearchpar$windowsize), xlab="Biallelic SNP density in variable-size windows")
+#~ 	abline(lm(ldroll$meanldr ~ snpdens), col='red')
+#~ 	ct = cor.test(x=snpdens, y=ldroll$meanldr)
+#~ 	text(x=0.8, y=max(ldroll$meanldr), labels=sprintf("r = %g\np = %g", ct$est, ct$p.val))
 	# subsampled data scan
-	plot(map.full2ref[ldrollsub$foci], ldrollsub$meanldrsub, ylab=sprintf("LD strength (r^2) in\n%dbp-wide windows", ldsearchparsub$windowsize, ldsearchparsub$windowsize), main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'), xlab=sprintf('%s genome coordinates', opt$reflabel), col='white')
+	plot(map.full2ref[ldrollsub$foci], ldrollsub$meanldrsub, ylab=sprintf("LD strength (r^2) in\n%dbp-wide windows", ldsearchparsub$windowsize, ldsearchparsub$windowsize), main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'), xlab=genome.coord.str, col='white')
 	# plot areas of NA's and low-coverage
 	pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub$compldfisub)], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, col='grey')
 	pb = sapply(lapply(rollsubsnpdens$foci[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, col='pink')
@@ -459,7 +455,7 @@ dev.off()
 if (opt$LD.metric=='r2'){
 	print(cor.test(rollnucdiv$nucdiv[rollnucdiv$foci %in% intersect(rollnucdiv$foci, ldrollsub$foci)], ldrollsub$meanldrsub[ldrollsub$foci %in% intersect(rollnucdiv$foci, ldrollsub$foci)]))
 }else{
-	print(cor.test(ldroll$logcompldfi[1:length(snpdens)], snpdens))
+#~ 	print(cor.test(ldroll$logcompldfi[1:length(snpdens)], snpdens))
 	print(cor.test(ldrollsub$logcompldfisub[1:length(snpdens)], snpdens))
 	print(cor.test(ldrollsub$logcompldfisub, rollsubsnpdens$reportsnpdens))
 }
