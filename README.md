@@ -3,11 +3,13 @@ R/Python modules and scripts for the analysis of recombination and linkage diseq
 It provides means to dissect the phylotype/haplotype structure of a genomic dataset per gene locus, to perform genome-wide sliding-window scans for the detection of hotspots of local LD, .
 
 This software suite and underlying methods were describedwas used in the following paper:  
-**Lassalle, F. et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. _Virus Evolution_ 2 (1), vew017.[doi:10.1093/ve/vew017](http://dx.doi.org/10.1093/ve/vew017).**  
+**Lassalle, F. et al. (2016) Islands of linkage in an ocean of pervasive recombination reveals two-speed evolution of human cytomegalovirus genomes. _Virus Evolution_ 2 (1), vew017. [doi:10.1093/ve/vew017](http://dx.doi.org/10.1093/ve/vew017).**  
 Please cite this paper if using any of the software below.
 
-## Bipartition profiling: searching for long-range LD between genes from bayesian phylogenetic tree samples
-The **bayesbipartprofile** suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and search for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
+## Bipartition profiling:
+## searching for long-range LD between genes from bayesian phylogenetic tree samples
+
+The **bayesbipartprofile** suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and searches for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
 
 Then, the [bayesbipartprofile.r] script builds matrices of bipartition support (two metrics are reported: posterior probability and compatibility score) across loci to detect conserved tracks of clonal phylogenetic structure, i.e. haplotypes, and provide text table and graphic output.
 This includes a map of phylogenetic haplotypes, and heatmaps of split profile correlation matrices, that provide a direct insight into linkage disequilibrium (LD) between genes, i.e. *long-range LD*.
@@ -25,7 +27,8 @@ Below is an example of the matrix of bipartition compatibility score correlation
 ![HCMV_bipart_compat_r2]
 
 
-## Genome-wide local LD scan: sliding window scan for excess LD between neighbour sites
+## Genome-wide local LD scan:
+## sliding window scan for excess LD between neighbour sites
 The [genome-wide_localLD_scan.r] script performs a genome-wide search for LD between pairs of sites, specifically comparing the allelic patterns at biallelic polymorphic sites (bial-SNPs) in a multiple genome sequence alignment.
 
 First this script computes all r^2 or Fisher's exact test p-values for all pairs of bi-allelic sites in the genomes, and stores then in a matrix (saved in an `.RData` file). This can be restrained to neighbouring sites using `--max.dist.ldr` option to save computional time when ong-range LD is not of interest.
@@ -75,11 +78,11 @@ Usage: ./genome-wide_localLD_scan.r [-[-genomic.aln|a] <character>] [-[-out.dir|
 
 ## Detection of recombination (occurence and breakpoints) in gene alignments
 
-These scripts provide wrappers for recombination detection programs, including GeneConv, PHI and HyPhy's SBP/GARD in particular.
+These **detect_recomb** scripts provide wrappers for recombination detection programs, including GeneConv, PHI and HyPhy's SBP/GARD in particular.
 
 It is highly recommended to perform such a search for recombination breakpoints *prior* to any phylogenetic inference, including the bayesian gene tree sampling (e.g. with MrBayes) that provides the input for the **bayesbipartprofile** scripts descibed above.
 
-Both script allow the execution of many unique jobs. For that you've got to provide a list of tasks, i.e. a file in which each line is a path to a sequence alignment you desire to scan = one task. The Python script run tasks sequentially, and the qsub script (shell wrapper to submit parallel jobs of the Python script to a SGE type of computer cluster) can schedule them for execution in parallel, each job dealing with a chunk of tasks to be executed sequentially).
+Both script allow the execution of many unique jobs. For that you've got to provide a list of tasks, i.e. a file in which each line is a path to a sequence alignment you desire to scan = one task. The [detect_recomb.py] script run tasks sequentially, and the [detect_recomb.qsub] script (shell wrapper to submit parallel jobs of the Python script to a SGE type of computer cluster) can schedule them for execution in parallel, each job dealing with a chunk of tasks to be executed sequentially).
 
 A requirement to use GARD is to specify the location of the `mpirun` command and of the `hyphy/` root folder (set `mpipath` and `hyphypath` variables directly in the Python script, or set the `$mympi` and `$myhyphy` variables in the qsub script).
 
@@ -89,4 +92,6 @@ A requirement to use GARD is to specify the location of the `mpirun` command and
 [bayesbipartprofile.r]: https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r
 [genome-wide_localLD_scan.r]: https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r
 [utils-phylo.r]: https://github.com/flass/genomescans/blob/master/utils-phylo.r
+[detect_recomb.py]: https://github.com/flass/genomescans/blob/master/detect_recomb.py
+[detect_recomb.qsub]: https://github.com/flass/genomescans/blob/master/detect_recomb.qsub
 [HCMV_bipart_compat_r2]: https://github.com/flass/genomescans/blob/master/figures/HCMV_longLD_bipart_compat_score_r2.png
