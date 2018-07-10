@@ -7,49 +7,46 @@ This software suite was used in the following paper: [F. Lassalle et al. (2016) 
 The bayesbipartprofile suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the '[bayesbipartprofile.py](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.py)' script generates a database of bipartiations and search for similarities between them. Then, the '[bayesbipartprofile.r](https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r)' script builds matrices of bipartition support (using posterioir probability and compatibility metrics) across loci to detect conserved tracks of clonal phylogenetic stracture, i.e. haplotypes, and provide text table and graphic output.
 (parser last tested and working on ouput from MrBayes 3.2.2)
 
-## [genome-wide_LD_template.r](https://github.com/flass/genomescans/blob/master/genome-wide_LD_template.r)
-The '[genome-wide_LD_template.r](https://github.com/flass/genomescans/blob/master/genome-wide_LD_template.r)' script performs a genome-wide search for linkage disequilibrium (LD) based on the distribution of alleles at biallelic polymorphic sites (SNPs) in a multiple sequence alignment.
+## [genome-wide_localLD_scan.r](https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r)
+The '[genome-wide_localLD_scan.r](https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r)' script performs a genome-wide search for linkage disequilibrium (LD) based on the distribution of alleles at biallelic polymorphic sites (SNPs) in a multiple sequence alignment.
 It mainly rely on `linkageDisequilibrium()` and `rollStats()` functions in '[utils-phylo.r](https://github.com/flass/genomescans/blob/master/utils-phylo.r)' module.
 
-Many options are available, and have to be specified by changing the values of several variables directly in the script;this includes the paths to the relevant input and output files. Here is a sample of them:
+Many options are available, and have to be specified using short long options, as described below (result of call with --help option):
 
-### environment variables
-```R
-nfsource = 'path/to/utils-phylo.r'
-nbcores = 1		# number of cores to be used in parallel ; for LD computation on big datasets (>100kb are big), prefer use nbcores=1 (see below), unless large memory is available
-resultdir = 'path/to/data/and/results/directory'
-full.aln = read.dna('path/to/genome_alignment.fasta', format='fasta')
-reflabel = 'reflabel'	# label in the alignement of the strain to use for reference genome coordinates
-```
-### parameters of genome-wide LD computation
-```R
-max.dist.ldr = 3000	# maximum distance between pairs of bi-allelic sites for LD computation (in mumber of intervening bi-allelic sites ; not uniform !!! polymorphism varry in density across the genome !!!) 
-# the last comment is good reason not to do it, so alternatively:
-max.dist.ldr = NULL	# compute the full matrix; not that much bigger depending on the datset
-maxgap = 1			# maximum number of allowed missing sequences to keep a site in the alignement for LD and NucDiv computations
-minalfrq = 1		# minimum allele frequency (in count of sequences) in bi-alelic sites to be retained (minalfreq = 1 => all bi-allelic sites)
-gapchars = c('-', 'N', 'n')	# various characters to consider as missing data
-LDmetric = 'r2' # if one want to report the r-squared statistic of LD; the Chi-squared approximation can be used a posteriori (Chi-squared only depend on r2 value) when the minor allele counts are not too low, or alternatively:
-LDmetric = 'Fisher' # if one want to report the p-value of a Fisher exact test for significance of the LD; recommended as the situation above is rarely met in most of the microbial pathogen genomes
-```
 
-### parameters for window scans looking for local hotspots of LD or nucleotidic diversity
-```R
-# parameters for scans with windows with a fixed number of biallelic SNPs, variable physical size
-ldsearchpar = list(20, 5, 1e-10)
-names(ldsearchpar) = c('windowsize', 'step', 'signifthresh')
-# parameters for scans with windows with a fixed physical size, variable number of biallelic SNPs but sub-sampled to a maximum to get the closer to a  homogeneous statistical power along the genome; any wndow with lower number of SNP than the max has a large drop in sensitivity for high LD
-# must manage a trade-off between genome coverage (achived by enlarging the windowsize and lowering the maxsize) and resolution using small and SNP-dense winndows (the inverse)
-ldsearchparsub = list(700, 10, 20, 1e-5)
-names(ldsearchparsub) = c('windowsize', 'step', 'maxsize', 'signifthresh')
-# parameters for window scan for nucleotidic diversity; no fancy concept here
-nucdivsearchpar = list(100, 1, 0.1)
-names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
 ```
-### plotting and reporting options
-```R
-nfmapcds = '/path/to/ref/genome/genbank/feature/table.txt'
-# requires a GenBank feature table file matching the reference sequence
+Usage: ./genome-wide_localLD_scan.r [-[-genomic.aln|a] <character>] [-[-out.dir|o] <character>] [-[-LD.metric|D] [<character>]] [-[-ref.label|r] [<character>]] [-[-window.size|w] [<integer>]] [-[-step|s] [<integer>]] [-[-nb.snp|m] [<integer>]] [-[-signif.thresh|t] [<double>]] [-[-feature.table|f] [<character>]] [-[-chomp.gene.names|C] [<character>]] [-[-threads|T] [<integer>]] [-[-max.dist.ldr|d] [<integer>]] [-[-max.gap|g] [<integer>]] [-[-min.allele.freq|q] [<integer>]] [-[-crazy.plot|K] [<integer>]] [-[-help|h]]
+    -a|--genomic.aln         path to genomic alignment from which biallelic sites will be searched and LD tested
+    -o|--out.dir             path to an existing ouput folder; a prefix to give to oupout files can be appended, e.g.: 
+                               '/path/to/ouput/folder/file_prefix'
+    -D|--LD.metric           metric to report from measurement of LD, one of: 'r2' (correlation coeff.) 
+                               or 'Fisher' (Local LD Index [default]: -log(10) p.value of a Man-Witney-Wilcoxon U-test 
+                               comparing the local distribution of p-values of Fisher exact tests for pairs of neighbour 
+                               biallelic sites within the window vs. in the whole genome)
+    -r|--ref.label           (comma-separated) label(s) of the genome sequence(s) to exclude from the analysis; 
+                               the first is also assumed to be the reference genome and is used to translate alignment 
+                               coordinates into reference genome coordinates
+    -w|--window.size         physical size (bp) of the sliding windows in which LD is evaluated [default: 3000]
+    -s|--step                step (bp) of the sliding windows in which LD is evaluated [default: 10]
+    -m|--nb.snp              number of biallelic SNP within each window that are used for LD computation
+                               (windows with less than that are excluded from the report) [default: 20]
+    -t|--signif.thresh       threshold of Local LD Index above which the observed LD is significant [default: 5]
+    -f|--feature.table       path to GenBank feature table file indicating CDSs and matching the reference sequence coordinates
+    -C|--chomp.gene.names    regular expression pattern to shortern gene names; default to '^.+_(.+)_.+$';
+                               disable by providing all-matching pattern '(.+)'
+    -T|--threads             number of parallel threds used for computation (beware of memory use increase)
+                               [default to 1: no parallel computation]
+    -d|--max.dist.ldr        maximum distance between pairs of bi-allelic sites for which to compute LD
+                               (in mumber of intervening bi-allelic sites ; Beware: this is not uniform !!! 
+                               polymorphism density varry across the genome !!!); by default compute the full matrix, 
+                               which is rarely that much bigger.
+    -g|--max.gap             maximum number of allowed missing sequences to keep a site in the alignement for LD and NucDiv computations
+    -q|--min.allele.freq     minimum allele frequency (in count of sequences) in bi-alelic sites to be retained
+                               (minalfreq = 1 => all bi-allelic sites [default])
+    -K|--crazy.plot          plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites
+                               to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very long
+                               to plot, and tedious to read as well [not done by default]
+    -h|--help
 ```
 
 ## detect_recomb scripts

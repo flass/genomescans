@@ -23,20 +23,20 @@ chompnames = function(fullnames, genepat='^.+_(.+)_.+$'){
 
 spec = matrix(c(
   'genomic.aln',     'a', 1, "character", "path to genomic alignment from which biallelic sites will be searched and LD tested",
-  'out.dir',         'o', 1, "character", "path to an existing ouput folder; a prefix to give to oupout files can be appended, e.g.: '/path/to/ouput/folder/file_prefix'",
-  'LD.metric',       'D', 2, "character", "metric to report from measurement of LD, one of: 'r2' (correlation coeff.), 'Fisher' (Local LD Index [default]: -log(10) p.value of a Man-Witney-Wilcoxon U-test comparing the local distribution of p-values of Fisher exact tests for pairs of neighbour biallelic sites within the window vs. in the whole genome)",
-  'ref.label',       'r', 2, "character", "(comma-separated) label(s) of the genome sequence(s) to exclude from the analysis; the first is also assumed to be the reference genome and is used to translate alignment coordinates into reference genome coordinates",
+  'out.dir',         'o', 1, "character", "path to an existing ouput folder; a prefix to give to oupout files can be appended, e.g.:\n\t\t\t\t'/path/to/ouput/folder/file_prefix'",
+  'LD.metric',       'D', 2, "character", "metric to report from measurement of LD, one of: 'r2' (correlation coeff.),\n\t\t\t\tor 'Fisher' (Local LD Index [default]: -log(10) p.value of a Man-Witney-Wilcoxon U-test comparing the local distribution of p-values of Fisher exact tests for pairs of neighbour\n\t\t\t\tbiallelic sites within the window vs. in the whole genome)",
+  'ref.label',       'r', 2, "character", "(comma-separated) label(s) of the genome sequence(s) to exclude from the analysis;\n\t\t\t\tthe first is also assumed to be the reference genome and is used to translate alignment\n\t\t\t\tcoordinates into reference genome coordinates",
   'window.size',     'w', 2, "integer",   "physical size (bp) of the sliding windows in which LD is evaluated [default: 3000]",
   'step',            's', 2, "integer",   "step (bp) of the sliding windows in which LD is evaluated [default: 10]",
   'nb.snp',          'm', 2, "integer",   "number of biallelic SNP within each window that are used for LD computation\n(windows with less than that are excluded from the report) [default: 20]",
   'signif.thresh',   't', 2, "double",    "threshold of Local LD Index above which the observed LD is significant [default: 5]",
   'feature.table',   'f', 2, "character", "path to GenBank feature table file indicating CDSs and matching the reference sequence coordinates",
-  'chomp.gene.names','C', 2, "character", "regular expression pattern to shortern gene names; default to '^.+_(.+)_.+$'; disable by providing all-matching pattern '(.+)'",
-  'threads',         'T', 2, "integer",   "number of parallel threds used for computation (beware of memory use increase) [default to 1: no parallel compuation]",
-  'max.dist.ldr',    'd', 2, "integer",   "maximum distance between pairs of bi-allelic sites for which to compute LD (in mumber of intervening bi-allelic sites ; Beware: this is not uniform !!! polymorphism density varry across the genome !!!); by default compute the full matrix, which is rarely that much bigger",
+  'chomp.gene.names','C', 2, "character", "regular expression pattern to shortern gene names; default to '^.+_(.+)_.+$';\n\t\t\t\tdisable by providing all-matching pattern '(.+)'",
+  'threads',         'T', 2, "integer",   "number of parallel threds used for computation (beware of memory use increase)\n\t\t\t\t[default to 1: no parallel computation]",
+  'max.dist.ldr',    'd', 2, "integer",   "maximum distance between pairs of bi-allelic sites for which to compute LD\n\t\t\t\t(in mumber of intervening bi-allelic sites ; Beware: this is not uniform !!!\n\t\t\t\tpolymorphism density varry across the genome !!!); by default compute the full matrix,\n\t\t\t\twhich is rarely that much bigger",
   'max.gap',         'g', 2, "integer",   "maximum number of allowed missing sequences to keep a site in the alignement for LD and NucDiv computations",
-  'min.allele.freq', 'q', 2, "integer",   "minimum allele frequency (in count of sequences) in bi-alelic sites to be retained (minalfreq = 1 => all bi-allelic sites [default])",
-  'crazy.plot',      'K', 2, "integer",   "plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very tedious to plot, and to read as well [not doone by default]",
+  'min.allele.freq', 'q', 2, "integer",   "minimum allele frequency (in count of sequences) in bi-alelic sites to be retained\n\t\t\t\t(minalfreq = 1 => all bi-allelic sites [default])",
+  'crazy.plot',      'K', 2, "integer",   "plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites\n\t\t\t\tto represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very long\n\t\t\t\tto plot, and tedious to read as well [not done by default]",
   'help',            'h', 0, "logical",   ""
 ), byrow=TRUE, ncol=5);
 opt = getopt(spec, opt=commandArgs(trailingOnly=T))
