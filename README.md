@@ -70,9 +70,9 @@ Both script allow the execution of many unique jobs. For that you've got to prov
 
 A requirement to use GARD is to specify the location of the `mpirun` command and of the `hyphy/` root folder (set `mpipath` and `hyphypath` variables directly in the Python script, or set the `$mympi` and `$myhyphy` variables in the qsub script).
 
-[Lassalle et al. (2016)] http://dx.doi.org/10.1093/ve/vew017
-[bayesbipartprofile.py] https://github.com/flass/genomescans/blob/master/bayesbipartprofile.py
-[bayesbipartprofile.r] https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r
-[genome-wide_localLD_scan.r] https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r
-[utils-phylo.r] https://github.com/flass/genomescans/blob/master/utils-phylo.r
-[HCMV_bipart_compat_cor]: https://github.com/flass/genomscan/blob/master/figures/HCMV_longLD_bipart_compat_score_correlation.png
+[Lassalle et al. (2016)]: http://dx.doi.org/10.1093/ve/vew017
+[bayesbipartprofile.py]: https://github.com/flass/genomescans/blob/master/bayesbipartprofile.py
+[bayesbipartprofile.r]: https://github.com/flass/genomescans/blob/master/bayesbipartprofile.r
+[genome-wide_localLD_scan.r]: https://github.com/flass/genomescans/blob/master/genome-wide_localLD_scan.r
+[utils-phylo.r]: https://github.com/flass/genomescans/blob/master/utils-phylo.r
+[HCMV_bipart_compat_cor]: https://github.com/flass/genomescans/blob/master/figures/HCMV_longLD_bipart_compat_score_correlation.png
