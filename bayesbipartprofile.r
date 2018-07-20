@@ -120,6 +120,16 @@ plotHMBGDbyGenes = function(lPPB, lcabPPB, cherries, cherrylabs, gene.filter=NUL
 	}
 }
 
+plotBipartCovCorR2heatmaps = function(covm, corm, tag){
+	heatmap.2(covm, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main=sprintf('covariance of %s across loci', tag))
+	# heatmap of covariance matrix, rows scaled by their maximum
+	heatmap.2(t(apply(covPPbiparts, 1, function(x){ x / max(x) })), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main=sprintf('covariance of %s across loci (scaled by row)', tag))
+	# heatmap of correlation matrix
+	heatmap.2(corm, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main=sprintf('correlation of %s across loci', tag))
+	# heatmap of determination coefficient (R^2) matrix
+	heatmap.2(corm^2, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main=sprintf('R^2 of %s across loci', tag))
+}
+
 carg = commandArgs(trailingOnly=TRUE)
 ordtag = '--gene.list.is.ordered'
 ordgenelist = ordtag %in% carg
@@ -178,7 +188,8 @@ print(genenames, quote=F)
 
 ## may have to tweak this to parse correctly gene names, depending on their format
 
-gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][1] })
+#~ gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][1] })
+gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][2] })
 #~ gnames = sapply(genenames, function(x){ strsplit(x, split='_')[[1]][3] })
 #~ print(gnames)
 gcount = table(gnames)
@@ -368,27 +379,22 @@ pdf(paste(dircladeprofile, 'test_longLD_bipart.pdf', sep='/'), width=25, height=
 # clustering
 plot(hclust(d=dist(t(PPbiparts), method='euclidean'), method='complete'), main='Post. Prob. Support')
 plot(hclust(d=dist(t(compPPbiparts), method='euclidean'), method='complete'), main='Compatibility')
-# heatmap of covariance matrix
+
+#### heatmaps of covariance matrix;  covariance matrix, rows scaled by their maximum; correlation matrix; determination coefficient (R^2) matrix
+# PP supports
 covPPbiparts = cov(PPbiparts)
-heatmap.2(covPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition support across loci')
-covcompPPbiparts = cov(compPPbiparts)
-heatmap.2(covcompPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition compatbility across loci')
-# heatmap of covariance matrix, rows scaled by their maximum
-heatmap.2(t(apply(covPPbiparts, 1, function(x){ x / max(x) })), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition support across loci (scaled by row)')
-heatmap.2(t(apply(covcompPPbiparts, 1, function(x){ x / max(x) })), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='covariance of bipartition compatbility across loci (scaled by row)')
-# heatmap of correlation matrix
 corPPbiparts = cov2cor(covPPbiparts)
+plotBipartCovCorR2heatmaps(covPPbiparts, corPPbiparts, 'bipartition support')
+# compatibility
+covcompPPbiparts = cov(compPPbiparts)
 corcompPPbiparts = cov2cor(covcompPPbiparts)
-heatmap.2(corPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition support across loci')
-heatmap.2(corcompPPbiparts, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='correlation of bipartition compatbility across loci')
-# heatmap of determination coefficient (R^2) matrix
-heatmap.2(corPPbiparts^2, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='R^2 of bipartition support across loci')
-heatmap.2(corcompPPbiparts^2, Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='R^2 of bipartition compatbility across loci')
-#~ # heatmap of correlation significance = t-test p-value matrix
-#~ heatmap.2(matCorPval(PPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='Significance of correlation (-log10(t-test p-val))\nof bipartition support across loci')
-#~ heatmap.2((matCorPval(compPPbiparts), Rowv=F, Colv=F, col=rev(heat.colors(9)), breaks=10, dendrogram='none', scale='none', trace='none', symbreaks=F, main='Significance of correlation (-log10(t-test p-val))\nof bipartition compatbility across loci')
-
-
+plotBipartCovCorR2heatmaps(covcompPPbiparts, corcompPPbiparts, 'bipartition compatbility')
+## use weighted covariance - weight by the size of small clade
+weightssmallparts = dbbiparts$size_smallpart[sapply(nrbiparts, function(x){ which(dbbiparts$bipart==x)})]
+wtcovPPbiparts = cov.wt(PPbiparts, wt=weightssmallparts, cor=T)
+wtcovcompPPbiparts = cov.wt(compPPbiparts, wt=weightssmallparts, cor=T)
+plotBipartCovCorR2heatmaps(wtcovPPbiparts$cov, wtcovPPbiparts$cor, 'weighted bipartition support')
+plotBipartCovCorR2heatmaps(wtcovcompPPbiparts$cov, wtcovcompPPbiparts$cor, 'weighted bipartition compatbility')
 
 # must correct for non-independence
 # and account for mostly empty signal leading to limited correlation

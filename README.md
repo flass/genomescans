@@ -9,10 +9,11 @@ Please cite this paper if using any of the software below.
 _____________________________________
 
 
-## Bipartition profiling:
-## searching for long-range LD between genes from bayesian phylogenetic tree samples
+## Bipartition profiling: searching for long-range LD between genes from bayesian phylogenetic tree samples
 
-The **bayesbipartprofile** suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and searches for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
+The **bayesbipartprofile** suite intends to explore the local phylogenetic structure within genomes of recombining species. It reconstructs haplotypes spanning genome regions, looking for any conserved phylogenetetic relationships between variable sets of strains/species/isolates across loci. 
+
+From a dataset of bayesian samples of gene trees, the [bayesbipartprofile.py] script generates a database of bipartiations and searches for similarities between them. (parser last tested and working on ouput from MrBayes 3.2.2)
 
 Then, the [bayesbipartprofile.r] script builds matrices of bipartition support (two metrics are reported: posterior probability and compatibility score) across loci to detect conserved tracks of clonal phylogenetic structure, i.e. haplotypes, and provide text table and graphic output.
 This includes a map of phylogenetic haplotypes, and heatmaps of split profile correlation matrices, that provide a direct insight into linkage disequilibrium (LD) between genes, i.e. *long-range LD*.
