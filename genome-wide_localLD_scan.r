@@ -187,7 +187,7 @@ if (file.exists(nfnd)){
 	load(nfnd)
 }else{
 	print('compute \'rollnucdiv\'', quote=F)
-	rollnucdiv = rollStats(full.aln, windowsize=100, step=1, fun=NULL, measures=c("nucdiv"), dist.model='raw', rmAbsSeq=TRUE, propgap=0.35, relpropgap=10, multiproc=opt$threads, quiet=FALSE)
+	rollnucdiv = rollStats(full.aln, windowsize=opt$window.size, step=opt$step, fun=NULL, measures=c("nucdiv"), dist.model='raw', rmAbsSeq=TRUE, propgap=0.35, relpropgap=10, multiproc=opt$threads, quiet=FALSE)
 	rollnucdiv$reference.position =  map.full2ref[rollnucdiv$foci]
 	rollnucdiv = rollnucdiv[!is.na(rollnucdiv$reference.position),]
 	rollnucdiv$scaled.nucdiv = rollnucdiv$nucdiv / max(rollnucdiv$nucdiv, na.rm=T)
@@ -226,8 +226,15 @@ if (file.exists(nfldr)){
 	save(bial.ldr2, file=nfldr)
 }
 
-measure = NULL
-
+if (opt$LD.metric %in% LDI.aliases){
+	measure = "logcompldfisub" # main reported LD metric
+}else{ if (opt$LD.metric == 'median_Fisher_pval'){
+	measure = "medldfisub" # main reported LD metric
+}else{ if (opt$LD.metric == 'sitepairs_signif_Fisher'){
+	measure = "signifsitepairs" # main reported LD metric
+}else{
+	measure = "meanldrsub" # main reported LD metric
+}}}
 # The Fisher test p-values from a window are compared to the distribution of p-values for the genome-wide set of comparisons made in this range (i.e. within the diagonal ribbon of the square matrix of all-versus-all sites LD tests, sampled with a quantile function to get a representative sample of the same size than the window's) using a Mann-Whitney-Wilcoxon U test.
 nflocld = paste(opt$out.dir, paste(sprintf("LD_%s", LDmetric1), "LocalLD", minalfrqset, siteset, 'RData', sep='.'), sep='')
 if (file.exists(nflocld)){ load(nflocld)
@@ -282,7 +289,7 @@ if (file.exists(nflocld)){ load(nflocld)
 				wt = wilcox.test(-log10(bial.ldr2[bialrange, bialrange]), -log10(subsamplewgfi), alternative='greater')
 				return(wt$p.val)
 		}}
-		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=compldfisub, measures=c("compldfisub"), fun.userange=list(compldfisub=TRUE), multiproc=opt$threads)
+		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=compldfisub, measures=measure, fun.userange=list(compldfisub=TRUE), multiproc=opt$threads)
 		ldrollsub$logcompldfisub = -log10(ldrollsub$compldfisub)
 		ldrollsub$compldfisub.nonas  = ldrollsub$compldfisub
 		ldrollsub[is.na(ldrollsub$compldfisub), 'compldfisub.nonas'] = 1
@@ -298,7 +305,7 @@ if (file.exists(nflocld)){ load(nflocld)
 				med = median(-log10(bial.ldr2[bialrange, bialrange]), na.rm=T)
 				return(med)
 		}}
-		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=medldfisub, measures=c("medldfisub"), fun.userange=list(medldfisub=TRUE), multiproc=opt$threads)	
+		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=medldfisub, measures=measure, fun.userange=list(medldfisub=TRUE), multiproc=opt$threads)	
 	}else{ if (opt$LD.metric == 'sitepairs_signif_Fisher'){
 		measure = "signifsitepairs" # main reported LD metric
 		signifsitepairs = function(alnrange){ 
@@ -311,7 +318,7 @@ if (file.exists(nflocld)){ load(nflocld)
 				nr.signif.i = unique(as.vector(signif.ai))
 				return(length(nr.signif.i))
 		}}
-		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=signifsitepairs, measures=c("signifsitepairs"), fun.userange=list(signifsitepairs=TRUE), multiproc=opt$threads)	
+		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=signifsitepairs, measures=measure, fun.userange=list(signifsitepairs=TRUE), multiproc=opt$threads)	
 	}else{
 		measure = "meanldrsub" # main reported LD metric
 		meanldrsub = function(alnrange){
@@ -321,9 +328,11 @@ if (file.exists(nflocld)){ load(nflocld)
  				return(mean(bial.ldr2[bialrange, bialrange], na.rm=TRUE))
 			}
 		}
-		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=meanldrsub, measures=c("meanldrsub"), fun.userange=list(meanldrsub=TRUE), multiproc=opt$threads)	
+		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=meanldrsub, measures=measure, fun.userange=list(meanldrsub=TRUE), multiproc=opt$threads)	
 	}}}
 	ldrollsub$reference.position = map.full2refnona[ldrollsub$foci]
+	
+	
 	
 	print("get local biallelic SNP density", quote=F)
 	
@@ -333,7 +342,7 @@ if (file.exists(nflocld)){ load(nflocld)
 	save(ldrollsub, rollsubsnpdens, file=nflocld)
 	write.table(ldrollsub, paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, 'tab', sep='.'), sep=''))
 }
-
+print(head(ldrollsub))
 
 hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub < ldsearchparsub$signifthresh)]
 hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsearchpar$signifthresh)]
@@ -429,15 +438,7 @@ plotphysize = function(w, plotfun, ...){
 pdf(file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, 'pdf', sep='.'), sep=''), width=15, height=10,
  title=sprintf('%s - local LD %s - windows %dbp', datasetname, opt$LD.metric, opt$physicalwindowsize))
 
-### summary and genomic map plots
-par(mar=c(8,8,8,8))
-# subsampled data scan
-plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=sprintf('LD significance in\n%dbp-wide windows [-log10(p)]', ldsearchparsub$windowsize), main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'), xlab=genome.coord.str, col='white')
-# plot areas of NA's and low-coverage
-pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, col='grey')
-pb = sapply(lapply(rollsubsnpdens$foci[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, col='pink')
-abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
-if (opt$LD.metric %in% c(LDI.aliases, 'median_Fisher_pval')){
+if (opt$LD.metric %in% fishermetrics){
 	sigthresh = ldsearchparsub$signifthresh
 	ylabld = sprintf("LD significance in\n%dbp-wide windows [-log10(p)]", ldsearchparsub$windowsize)
 	histbreaks = 0:40
@@ -446,8 +447,25 @@ if (opt$LD.metric %in% c(LDI.aliases, 'median_Fisher_pval')){
 	ylabld = sprintf("LD strength (r^2) in\n%dbp-wide windows", ldsearchparsub$windowsize)
 	histbreaks = (0:40)/40
 }
+### summary and genomic map plots
+par(mar=c(8,8,8,8))
+# subsampled data scan
+print('head(ldrollsub$foci)')
+print(head(ldrollsub$foci))
+print('head(map.full2ref[ldrollsub$foci])')
+print(head(map.full2ref[ldrollsub$foci]))
+print(measure)
+print('head(ldrollsub[,measure])')
+print(summary(ldrollsub[,measure]))
+plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=ylabld, main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'), xlab=genome.coord.str, col='white')
+# plot areas of NA's and low-coverage
+pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, coul='grey')
+pb = sapply(lapply(rollsubsnpdens$foci[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, coul='pink')
+abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] < sigthresh, 'red', 'black'))
-if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){ text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5) }
+if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){
+	text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5)
+}
 legend('topright', fill=c('grey', 'pink'), legend=c("no data", sprintf("< %d biallelic SNP / window\n(low test power)", ldsearchparsub$maxsize)), bg='white')
 plot(ldrollsub[,measure] ~ rollsubsnpdens$reportsnpdens, ylab=ylabld, xlab="Biallelic SNP density in fixed-size windows")
 hist(rollsubsnpdens$reportsnpdens, breaks=0:20, xlab="Biallelic SNP density in fixed-size windows", main=paste(datasettag, "Distribution of SNP densities genome-wide", sep='\n'))
@@ -475,7 +493,7 @@ threshpval = 0.05
 N = length(ref.bial.i)
 m = dim(full.aln)[1] 
 
-nfsignifpairs = paste(opt$out.dir, nfoutldrad2, 'significant-sitepairspairs.RData', sep='.'), sep='')
+nfsignifpairs = paste(opt$out.dir, paste(nfoutldrad2, 'significant-sitepairs.RData', sep='.'), sep='')
 if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 }else{
 	matsize =  length(which(!is.na(bial.ldr2)))	
@@ -525,7 +543,7 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 	}
 	gc()
 	posr2pvals$site.dist = abs(posr2pvals$ref.pos.2 - posr2pvals$ref.pos.1)
-	write.table(posr2pvals, file=paste(opt$out.dir, nfoutldrad2, 'significant-pairs.tab', sep='.'), sep=''))
+	write.table(posr2pvals, file=gsub('\\.RData', '.tab', nfsignifpairs))
 	# for all comparisons
 	if (opt$LD.metric=='r2'){
 		allqvals = log10((1-pchisq(m*bial.ldr2, df=1))*matsize)
