@@ -64,6 +64,8 @@ spec = matrix(c(
 ), byrow=TRUE, ncol=5)
 opt = getopt(spec, opt=commandArgs(trailingOnly=T))
 
+#  'nuc.div',         'n', 2, "integer",   "window size (bp) enabless computation of nucleotidic diversity within windows of specified size",
+
 # if help was asked for print a friendly message 
 # and exit with a non-zero error code
 if ( !is.null(opt$help) ) {
@@ -132,8 +134,8 @@ print(paste("will use", opt$threads, "cores"), quote=F)
 ldsearchparsub = list(opt$window.size, opt$step, opt$nb.snp, signifthresh)
 names(ldsearchparsub) = c('windowsize', 'step', 'maxsize', 'signifthresh')
 # paprmaeters window scan for nucleotidic diversity; no fancy concept here
-nucdivsearchpar = list(100, 1, 0.1)
-names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
+#nucdivsearchpar = list(opt$nuc.div, 1, 0.1)
+#names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
 
 # define path to alignment file
 print(sprintf("load genomic alignment from: '%s'", opt$genomic.aln), quote=F)
@@ -344,8 +346,8 @@ if (file.exists(nflocld)){ load(nflocld)
 }
 print(head(ldrollsub))
 
-hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub < ldsearchparsub$signifthresh)]
-hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsearchpar$signifthresh)]
+#hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub < ldsearchparsub$signifthresh)]
+#hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsearchpar$signifthresh)]
 
 ### optional if you have an annotation with the coordinates of the genes
 ### to determine which gene harbour the LD hospots
