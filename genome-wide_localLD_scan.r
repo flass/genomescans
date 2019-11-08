@@ -6,11 +6,17 @@ library('RColorBrewer')
 library('ade4')
 library('getopt')
 
+raw.args = commandArgs(trailingOnly=T)
+thisscript = sub("--file=", "", raw.args[grep("--file=", raw.args)])
+scriptdir = dirname(thisscript)
 ### define path to R source file of core functions
-user = Sys.info()['user']
-homedir = paste('/home', user, sep='/')
-nfsource = paste(homedir, 'github_flass/genomescans/utils-phylo.r', sep='/')
-#~ nfsource = 'path/to/utils-phylo.r'
+nfsource = file.path(scriptdir, 'utils-phylo.r')
+if (!file.exists(nfsource)){
+	# try with 'generic' path
+	user = Sys.info()['user']
+	homedir = file.path('/home', user)
+	nfsource = file.path(homedir, 'software/genomescans/utils-phylo.r')
+}
 source(nfsource)
 
 ### other functions
@@ -22,7 +28,7 @@ chompnames = function(fullnames, genepat='^.+_(.+)_.+$'){
 LDI.aliases = c('Fisher', 'LDI', 'local_LD_index', 'Wilcox_Test_Fisher_pval')
 fishermetrics = c(LDI.aliases, 'median_Fisher_pval', 'sitepairs_signif_Fisher')
 all.measure.vals = c('r2', fishermetrics)
-	
+
 ### script options
 
 spec = matrix(c(
@@ -63,7 +69,7 @@ spec = matrix(c(
                                                 "to plot, and tedious to read as well [not done by default]", sep='\n\t\t\t\t'),
   'help',            'h', 0, "logical",   ""
 ), byrow=TRUE, ncol=5)
-opt = getopt(spec, opt=commandArgs(trailingOnly=T))
+opt = getopt(spec, opt=raw.args)
 
 
 # if help was asked for print a friendly message 
@@ -134,12 +140,14 @@ print(paste("will use", opt$threads, "cores"), quote=F)
 ldsearchparsub = list(opt$window.size, opt$step, opt$nb.snp, signifthresh)
 names(ldsearchparsub) = c('windowsize', 'step', 'maxsize', 'signifthresh')
 
-# define path to alignment file
-print(sprintf("load genomic alignment from: '%s'", opt$genomic.aln), quote=F)
-datasetname = strsplit(basename(opt$genomic.aln), '\\.')[[1]][1]
-prefull.aln = read.dna(opt$genomic.aln, format='fasta', as.matrix=T)
-full.aln = prefull.aln[setdiff(rownames(prefull.aln), opt$excl.labels),]
-
+# load alignment file
+if (!is.null(opt$genomic.aln)){
+	print(sprintf("load genomic alignment from: '%s'", opt$genomic.aln), quote=F)
+	prefull.aln = read.dna(opt$genomic.aln, format='fasta', as.matrix=T)
+	full.aln = prefull.aln[setdiff(rownames(prefull.aln), opt$excl.labels),]
+}else{
+	print("no alignment file was provided; assume all the data have been pre-computed and can be loaded from RData archive files")
+}
 # compute correspondency between raw reference sequence and gapped alignement coordinates
 nfmap2ref = paste(opt$out.dir, paste('coordinatesFullAln2Ref', 'RData', sep='.'), sep='')
 if (file.exists(nfmap2ref)){ load(nfmap2ref)
@@ -149,8 +157,6 @@ if (file.exists(nfmap2ref)){ load(nfmap2ref)
 	save(map.full2ref, map.full2refnona, file=nfmap2ref)
 }
 
-
-minorallelefreqs = getMinorAlleleFreq(full.aln, multiproc=opt$threads, consider.gaps.as.variant=FALSE)
 minalfrqset = paste('minalfrq', opt$min.allele.freq, sep='')
 siteset = paste('biallelicsites.max', opt$max.gap, 'gaps', sep='')
 
@@ -172,7 +178,7 @@ if (file.exists(nfbiali)){
 }else{
 	print('compute \'bialraregap.i\'', quote=F)
 	# biallelic sites including gaps (to be filtered out at each pairwise site comparison)
-	bialgap.i = getBiAllelicIndexes(full.aln, as.logical=FALSE, minallelefreq=NULL, nonsingle=FALSE, consider.gaps.as.variant=FALSE, multiproc=opt$threads)
+	bialgap.i = getBiAllelicIndexes(full.aln, as.logical=FALSE, minallelefreq=opt$min.allele.freq, nonsingle=FALSE, consider.gaps.as.variant=FALSE, multiproc=opt$threads)
 	# biallelic sites with at most 'maxgap' missing strains
 	bialraregap.i = bialgap.i[getGaplessIndexes(full.aln[,bialgap.i], as.logical=FALSE, maxgap=opt$max.gap, gapchar=c('-', 'N', 'n'), multiproc=opt$threads)]
 	save(bialgap.i, bialraregap.i, file=nfbiali)
@@ -199,9 +205,7 @@ if ( !is.null(opt$nuc.div) ){
 		write.table(rollnucdiv[bialraregap.i,], file=paste(opt$out.dir, paste("genomic_NucDiv_win100_rmAbsSeq", siteset, 'tab', sep='.'), sep=''), row.names=F, sep='\t')
 	}
 }
-## compute LD
-bial.aln = full.aln[, bialraregap.i]
-ref.bial.i = map.full2ref[bialraregap.i]
+#ref.bial.i = map.full2ref[bialraregap.i]
 
 nfldr = paste(opt$out.dir, paste(nfoutldrad2, 'RData', sep='.'), sep='')
 if (file.exists(nfldr)){ 
@@ -213,6 +217,8 @@ if (file.exists(nfldr)){
 		print(c('load \'lbial.ldr2\' from', nfldrtmp), quote=F)
 		load(nfldrtmp)
 	}else{
+		## compute LD
+		bial.aln = full.aln[, bialraregap.i]
 		print(sprintf('compute \'lbial.ldr2\' with metric \'%s\', using %d cores', LDmetric2, opt$threads), quote=F)
 		# !!! very big memory use (ex : for 42 strains * with ~10,000 biallelic SNPs: >20Gb Mem)
 		# !!! use of parallism lead to big overhead, probably due to hidden duplication of the (gigantic) data matrix ; code may be optimized, but could not find the way yet. if possible, run with nbcores=1
@@ -242,29 +248,7 @@ nflocld = paste(opt$out.dir, paste(sprintf("LD_%s", LDmetric1), "LocalLD", minal
 if (file.exists(nflocld)){ load(nflocld)
 }else{
 	print("get local LD intensity", quote=F)
-	if (opt$LD.metric %in% LDI.aliases){
-#~ 		print(sprintf(" within windows of variable physical size, containing always %d biallelic sites", ldsearchpar$windowsize), quote=F)
-#~ 		# for the null distribution, uses the total empiric distribution, taking only a sample to have comparable effective size for the test
-#~ 		# sample the matrix in the diagonal ribbon that will be explored by the sliding window (i.e. short-distance comparisons, should be higher values than on the whole matrix)
-#~ 		ribbonheight = ldsearchpar$windowsize/2
-#~ 		nfribbon = paste(opt$out.dir, paste(sprintf("LDmatrix_LowerRibbonIndexes_%dsites_window%d", dim(bial.ldr2)[1], ldsearchpar$windowsize), "LocalLD", minalfrqset, siteset, 'RData', sep='.'), sep='')
-#~ 		if (file.exists(nfribbon)){ load(nfribbon)
-#~ 		}else{
-#~ 			print("  get site range for computing empirical null distribution", quote=F)
-#~ 			ribbon.i = conditionalMatrixIndexes(dim(bial.ldr2)[1], getIndexesLowerRibbon, max.dist=ribbonheight, multiproc=1)
-#~ 			print(sprintf("   %d sites", length(ribbon.i)), quote=F)
-#~ 			save(ribbon.i, file=nfribbon)
-#~ 		}
-#~ 		# take a sample the size of the upper triangular part of the sliding window matrix 
-#~ 		samplesize = ldsearchpar$windowsize*(ldsearchpar$windowsize - 1)/2
-#~ 		# use quantiles tu ensure sample is representative of the distribution
-#~ 		# excludes NA located in the lower triangular matrix so as to get the right count of informative cells
-#~ 		samplewgfi = quantile(bial.ldr2[ribbon.i], p=(0:samplesize)/samplesize, na.rm=T)	
-#~ 		measure = "compldfi"
-#~ 		compldfi = function(alnrange){ if (length(alnrange)<5){ return(NA) }else{ wilcox.test(-log10(bial.ldr2[alnrange, alnrange]), -log10(samplewgfi), alternative='greater')$p.val }}		
-#~ 		ldroll = rollStats(bial.aln, windowsize=ldsearchpar$windowsize, step=ldsearchpar$step, fun=compldfi, measures=c("compldfi"), fun.userange=list(compldfi=TRUE), multiproc=1)
-#~ 		ldroll$logcompldfi = -log10(ldroll$compldfi)
-		
+	if (opt$LD.metric %in% LDI.aliases){		
 		measure = "logcompldfisub" # main reported LD metric
 		print(sprintf(" within windows of fixed physical size %dbp to sample bialelic sites within windows at a fixed (maximum) density of %d/window", ldsearchparsub$windowsize, ldsearchparsub$maxsize), quote=F)
 		# for the null distribution, uses the total empiric distribution, taking only a sample to have comparable effective size for the test
@@ -439,7 +423,7 @@ plotphysize = function(w, plotfun, ...){
 
 
 pdf(file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, 'pdf', sep='.'), sep=''), width=15, height=10,
- title=sprintf('%s - local LD %s - windows %dbp', datasetname, opt$LD.metric, opt$physicalwindowsize))
+ title=sprintf('%s - local LD %s - windows %dbp', datasettag, opt$LD.metric, opt$physicalwindowsize))
 
 if (opt$LD.metric %in% fishermetrics){
 	sigthresh = ldsearchparsub$signifthresh
@@ -492,16 +476,15 @@ print(cor.test(ldrollsub[,measure], rollsubsnpdens$reportsnpdens))
 ## find site-to-site significant LD (use Bonferonni correction for genome-wide multiple testing)
 # !!! long and memory intensive, though less than the primary LD computations as it re-usues pre-computed data
 
-threshpval = 0.05
-N = length(ref.bial.i)
-m = dim(full.aln)[1] 
-
 nfsignifpairs = paste(opt$out.dir, paste(nfoutldrad2, 'significant-sitepairs.RData', sep='.'), sep='')
 if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 }else{
-	matsize =  length(which(!is.na(bial.ldr2)))	
-	gc()
-	if (opt$LD.metric=='r2'){
+  threshpval = 0.05
+  m = dim(full.aln)[1] 
+  matsize =  length(which(!is.na(bial.ldr2)))
+  minorallelefreqs = getMinorAlleleFreq(full.aln, multiproc=opt$threads, consider.gaps.as.variant=FALSE)
+  gc()
+  if (opt$LD.metric=='r2'){
 	## use the Chi-squared approximation; WRONG if any of the rare alleles at biallelic sites are observed less than 5 times, e.g. with singletons
 	signifr2 = qchisq(1-(threshpval/matsize), df=1)/m
 	siginfpairs = which(bial.ldr2 > signifr2, arr.ind=T)
@@ -509,29 +492,24 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 	gc()
 	starttime = Sys.time()
 	posr2pvals = as.data.frame(t(simplify2array(mclapply(1:dim(siginfpairs)[1], function(i){
-#~ 	posr2pvals = as.data.frame(t(sapply(1:dim(siginfpairs)[1], function(i){
 		biali = siginfpairs[i,]
 		pos = bialraregap.i[biali]
 		refpos = map.full2ref[pos]
 		minfreqs = minorallelefreqs[pos]
-	#~ 	r2 = lbial.ldr2[[biali[1]]][biali[2]]
 		r2 = bial.ldr2[biali[1], biali[2]][[1]]
-	#~ 	print(class(r2))
 		pval = 1-pchisq(m*r2, df=1)
 		qval = pval*matsize
 		printProgressUpperMatrix(i, dim(siginfpairs)[1], step=1000, initclock=starttime) 
 		return(c(refpos, pos, biali, r2, minfreqs, pval, qval))
 	}, mc.cores=opt$threads, mc.preschedule=T))))
-#~ 	})))
 	colnames(posr2pvals) = c('ref.pos.1', 'ref.pos.2', 'aln.pos.1', 'aln.pos.2', 'bial.pos.1', 'bial.pos.2', 'r2', 'min.allele.freq.1', 'min.allele.freq.2', 'p.val', 'q.val')
-	}else{
-	## already get a p-value from using th Fisher exact test (recomended)
+  }else{
+	## already get a p-value from using the Fisher exact test (recomended)
 	siginfpairs = which(bial.ldr2*matsize < threshpval, arr.ind=T)
 	print(sprintf("found %d pairs of biallelic sites (out of %d) in significant linkage (p < %f after Bonferonni correction for genome-wide multiple testing)", dim(siginfpairs)[1], matsize, threshpval))
 	gc()
 	starttime = Sys.time()
 	posr2pvals = as.data.frame(t(simplify2array(mclapply(1:dim(siginfpairs)[1], function(i){
-#~ 	posr2pvals = as.data.frame(t(sapply(1:dim(siginfpairs)[1], function(i){
 		biali = siginfpairs[i,]
 		pos = bialraregap.i[biali]
 		minfreqs = minorallelefreqs[pos]
@@ -541,24 +519,23 @@ if (file.exists(nfsignifpairs)){ load(nfsignifpairs)
 		printProgressUpperMatrix(i, dim(siginfpairs)[1], step=1000, initclock=starttime) 
 		return(c(refpos, pos, biali, minfreqs, pval, qval))
 	}, mc.cores=opt$threads, mc.preschedule=T))))
-#~ 	})))
 	colnames(posr2pvals) = c('ref.pos.1', 'ref.pos.2', 'aln.pos.1', 'aln.pos.2', 'bial.pos.1', 'bial.pos.2', 'min.allele.freq.1', 'min.allele.freq.2', 'p.val', 'q.val')
-	}
-	gc()
-	posr2pvals$site.dist = abs(posr2pvals$ref.pos.2 - posr2pvals$ref.pos.1)
-	write.table(posr2pvals, file=gsub('\\.RData', '.tab', nfsignifpairs))
-	# for all comparisons
-	if (opt$LD.metric=='r2'){
-		allqvals = log10((1-pchisq(m*bial.ldr2, df=1))*matsize)
-	}else{
-		allqvals = log10(as.numeric(bial.ldr2)*matsize)
-	}
-	gc()
-	rangeqvals = seq(from=floor(min(allqvals, na.rm=T)), to=floor(max(allqvals, na.rm=T)), by=0.5)
-	gc()
-	freqqvals = sapply(rangeqvals, function(k){ length(which(allqvals>=k & allqvals<k+0.5)) })
-	gc()
-	save(matsize, posr2pvals, siginfpairs, allqvals, rangeqvals, freqqvals, file=nfsignifpairs)
+  }
+  gc()
+  posr2pvals$site.dist = abs(posr2pvals$ref.pos.2 - posr2pvals$ref.pos.1)
+  write.table(posr2pvals, file=gsub('\\.RData', '.tab', nfsignifpairs))
+  # for all comparisons
+  if (opt$LD.metric=='r2'){
+    allqvals = log10((1-pchisq(m*bial.ldr2, df=1))*matsize)
+  }else{
+    allqvals = log10(as.numeric(bial.ldr2)*matsize)
+  }
+  gc()
+  rangeqvals = seq(from=floor(min(allqvals, na.rm=T)), to=floor(max(allqvals, na.rm=T)), by=0.5)
+  gc()
+  freqqvals = sapply(rangeqvals, function(k){ length(which(allqvals>=k & allqvals<k+0.5)) })
+  gc()
+  save(matsize, posr2pvals, siginfpairs, allqvals, rangeqvals, freqqvals, file=nfsignifpairs)
 }
 if (dim(posr2pvals)[1] > 0){
 	# only for the significant comparisons
