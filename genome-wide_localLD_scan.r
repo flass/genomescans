@@ -58,13 +58,13 @@ spec = matrix(c(
   'min.allele.freq', 'q', 2, "integer",   paste("minimum allele frequency (in count of sequences) in bi-alelic sites to be retained",
                                                 "(minalfreq = 1 => all bi-allelic sites [default])", sep='\n\t\t\t\t'),
   'crazy.plot',      'K', 2, "integer",   paste("plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites",
-                                                "to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very long",
+  'nuc.div',         'n', 2, "integer",   "window size (bp) enabless computation of nucleotidic diversity within windows of specified size",
+                                               "to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very long",
                                                 "to plot, and tedious to read as well [not done by default]", sep='\n\t\t\t\t'),
   'help',            'h', 0, "logical",   ""
 ), byrow=TRUE, ncol=5)
 opt = getopt(spec, opt=commandArgs(trailingOnly=T))
 
-#  'nuc.div',         'n', 2, "integer",   "window size (bp) enabless computation of nucleotidic diversity within windows of specified size",
 
 # if help was asked for print a friendly message 
 # and exit with a non-zero error code
@@ -133,9 +133,6 @@ print(paste("will use", opt$threads, "cores"), quote=F)
 # must manage a trade-off between genome coverage (achived by enlarging the windowsize and lowering the maxsize) and resolution using small and SNP-dense winndows (the inverse)
 ldsearchparsub = list(opt$window.size, opt$step, opt$nb.snp, signifthresh)
 names(ldsearchparsub) = c('windowsize', 'step', 'maxsize', 'signifthresh')
-# paprmaeters window scan for nucleotidic diversity; no fancy concept here
-#nucdivsearchpar = list(opt$nuc.div, 1, 0.1)
-#names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
 
 # define path to alignment file
 print(sprintf("load genomic alignment from: '%s'", opt$genomic.aln), quote=F)
@@ -181,24 +178,27 @@ if (file.exists(nfbiali)){
 	save(bialgap.i, bialraregap.i, file=nfbiali)
 }
 
-
-## compute Nucleotidic diversity
-nfnd = paste(opt$out.dir, paste("NucDiv", 'all', 'RData', sep='.'), sep='')
-if (file.exists(nfnd)){ 
-	print(c('load \'rollnucdiv\' from', nfnd), quote=F)
-	load(nfnd)
-}else{
-	print('compute \'rollnucdiv\'', quote=F)
-	rollnucdiv = rollStats(full.aln, windowsize=opt$window.size, step=opt$step, fun=NULL, measures=c("nucdiv"), dist.model='raw', rmAbsSeq=TRUE, propgap=0.35, relpropgap=10, multiproc=opt$threads, quiet=FALSE)
-	rollnucdiv$reference.position =  map.full2ref[rollnucdiv$foci]
-	rollnucdiv = rollnucdiv[!is.na(rollnucdiv$reference.position),]
-	rollnucdiv$scaled.nucdiv = rollnucdiv$nucdiv / max(rollnucdiv$nucdiv, na.rm=T)
-	write.table(rollnucdiv, file=paste(opt$out.dir, paste("genomic_NucDiv_win100_rmAbsSeq", "allsites", 'tab', sep='.'), sep=''), row.names=F, sep='\t')
-	save(rollnucdiv, file=nfnd)
-	# make a nuc.div table the size of LD tables to follow
-	write.table(rollnucdiv[bialraregap.i,], file=paste(opt$out.dir, paste("genomic_NucDiv_win100_rmAbsSeq", siteset, 'tab', sep='.'), sep=''), row.names=F, sep='\t')
+if ( !is.null(opt$nuc.div) ){
+	## compute Nucleotidic diversity
+	# parameters window scan for nucleotidic diversity; no fancy concept here
+	nucdivsearchpar = list(opt$nuc.div, 1, 0.1)
+	names(nucdivsearchpar) = c('windowsize', 'step', 'signifthresh')
+	nfnd = paste(opt$out.dir, paste("NucDiv", 'all', 'RData', sep='.'), sep='')
+	if (file.exists(nfnd)){ 
+		print(c('load \'rollnucdiv\' from', nfnd), quote=F)
+		load(nfnd)
+	}else{
+		print('compute \'rollnucdiv\'', quote=F)
+		rollnucdiv = rollStats(full.aln, windowsize=opt$window.size, step=opt$step, fun=NULL, measures=c("nucdiv"), dist.model='raw', rmAbsSeq=TRUE, propgap=0.35, relpropgap=10, multiproc=opt$threads, quiet=FALSE)
+		rollnucdiv$reference.position =  map.full2ref[rollnucdiv$foci]
+		rollnucdiv = rollnucdiv[!is.na(rollnucdiv$reference.position),]
+		rollnucdiv$scaled.nucdiv = rollnucdiv$nucdiv / max(rollnucdiv$nucdiv, na.rm=T)
+		write.table(rollnucdiv, file=paste(opt$out.dir, paste("genomic_NucDiv_win100_rmAbsSeq", "allsites", 'tab', sep='.'), sep=''), row.names=F, sep='\t')
+		save(rollnucdiv, file=nfnd)
+		# make a nuc.div table the size of LD tables to follow
+		write.table(rollnucdiv[bialraregap.i,], file=paste(opt$out.dir, paste("genomic_NucDiv_win100_rmAbsSeq", siteset, 'tab', sep='.'), sep=''), row.names=F, sep='\t')
+	}
 }
-
 ## compute LD
 bial.aln = full.aln[, bialraregap.i]
 ref.bial.i = map.full2ref[bialraregap.i]
@@ -346,9 +346,10 @@ if (file.exists(nflocld)){ load(nflocld)
 }
 print(head(ldrollsub))
 
-#hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub < ldsearchparsub$signifthresh)]
-#hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsearchpar$signifthresh)]
-
+hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub < ldsearchparsub$signifthresh)]
+if ( !is.null(opt$nuc.div) ){
+  hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsearchpar$signifthresh)]
+}
 ### optional if you have an annotation with the coordinates of the genes
 ### to determine which gene harbour the LD hospots
 
@@ -396,16 +397,16 @@ if (!is.null(opt$feature.table)){
 		}
 	}
 	names(gnames) = names(lcds.ref.i)
-	
-	# get locus-wise stats
-	lcds.maxnucdiv = t(sapply(lcds.ref.i, function(cds.ref.i){ 
-		cds.pos.i = rollnucdiv$reference.position %in% cds.ref.i
-		m = max(rollnucdiv$nucdiv[cds.pos.i], na.rm=T)
-		p = rollnucdiv$reference.position[cds.pos.i & rollnucdiv$nucdiv==m][1]
-		return(c(p,m))
-	}))
-	
-	hypervarloci = names(lcds.ref.i)[which(lcds.maxnucdiv[,2] > nucdivsearchpar$signifthresh)]
+	if ( !is.null(opt$nuc.div) ){
+		# get locus-wise stats
+		lcds.maxnucdiv = t(sapply(lcds.ref.i, function(cds.ref.i){ 
+			cds.pos.i = rollnucdiv$reference.position %in% cds.ref.i
+			m = max(rollnucdiv$nucdiv[cds.pos.i], na.rm=T)
+			p = rollnucdiv$reference.position[cds.pos.i & rollnucdiv$nucdiv==m][1]
+			return(c(p,m))
+		}))
+		hypervarloci = names(lcds.ref.i)[which(lcds.maxnucdiv[,2] > nucdivsearchpar$signifthresh)]
+	}
 	
 	# report the maximum value of the target LD metric for windows covered by each CDS
 	lcds.maxmeasure = t(sapply(lcds.ref.i, function(cds.ref.i){ 
@@ -482,11 +483,11 @@ mtext(names(qlogcompldfisub), at=qlogcompldfisub, side=1, col='red')
 dev.off()
 
 # test correlation of SNP density to 
-if (opt$LD.metric=='r2'){
-	print(cor.test(rollnucdiv$nucdiv[rollnucdiv$foci %in% intersect(rollnucdiv$foci, ldrollsub$foci)], ldrollsub$meanldrsub[ldrollsub$foci %in% intersect(rollnucdiv$foci, ldrollsub$foci)]))
-}else{
-	print(cor.test(ldrollsub[,measure], rollsubsnpdens$reportsnpdens))
+if ( !is.null(opt$nuc.div) ){
+	print(cor.test(rollnucdiv$nucdiv[rollnucdiv$foci %in% intersect(rollnucdiv$foci, ldrollsub$foci)], ldrollsub[ldrollsub$foci %in% intersect(rollnucdiv$foci, ldrollsub$foci), measure]))
 }
+print(cor.test(ldrollsub[,measure], rollsubsnpdens$reportsnpdens))
+
 
 ## find site-to-site significant LD (use Bonferonni correction for genome-wide multiple testing)
 # !!! long and memory intensive, though less than the primary LD computations as it re-usues pre-computed data
