@@ -1,13 +1,12 @@
 #!/usr/bin/Rscript --vanilla
 
 library('ape')
-library('RColorBrewer')
-#~ library('gplots')
+#library('RColorBrewer')
 library('ade4')
 library('getopt')
 
-raw.args = commandArgs(trailingOnly=T)
-thisscript = sub("--file=", "", raw.args[grep("--file=", raw.args)])
+raw.args = commandArgs(trailingOnly=F)
+thisscript = sub("--file=", "", grep("--file=", raw.args, value=T)])
 scriptdir = dirname(thisscript)
 ### define path to R source file of core functions
 nfsource = file.path(scriptdir, 'utils-phylo.r')
@@ -69,7 +68,7 @@ spec = matrix(c(
                                                 "to plot, and tedious to read as well [not done by default]", sep='\n\t\t\t\t'),
   'help',            'h', 0, "logical",   ""
 ), byrow=TRUE, ncol=5)
-opt = getopt(spec, opt=raw.args)
+opt = getopt(spec, opt=commandArgs(trailingOnly=T))
 
 
 # if help was asked for print a friendly message 
