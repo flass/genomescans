@@ -6,7 +6,7 @@ library('ade4')
 library('getopt')
 
 raw.args = commandArgs(trailingOnly=F)
-thisscript = sub("--file=", "", grep("--file=", raw.args, value=T)])
+thisscript = sub("--file=", "", grep("--file=", raw.args, value=T))
 scriptdir = dirname(thisscript)
 ### define path to R source file of core functions
 nfsource = file.path(scriptdir, 'utils-phylo.r')
