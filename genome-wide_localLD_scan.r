@@ -25,7 +25,7 @@ chompnames = function(fullnames, genepat='^.+_(.+)_.+$'){
 } 
 
 LDI.aliases = c('Fisher', 'LDI', 'local_LD_index', 'Wilcox_Test_Fisher_pval')
-fishermetrics = c(LDI.aliases, 'median_Fisher_pval', 'sitepairs_signif_Fisher')
+fishermetrics = c(LDI.aliases, 'median_Fisher_pval', 'top_Fisher_pval', 'sitepairs_signif_Fisher')
 all.measure.vals = c('r2', fishermetrics)
 
 ### script options
@@ -37,6 +37,7 @@ spec = matrix(c(
   'LD.metric',       'D', 2, "character", paste("metric to report from measurement of LD, one of:",
                                                 "'r2', the mean site-to-site polymorphism correlation coeff. in the window;",
                                                 "'median_Fisher_pval', the median of the -log(10) p-values of Fisher's exact tests in the window;",
+                                                "'top_Fisher_pval', the most significant of the -log(10) p-values of Fisher's exact tests in the window;",
                                                 "'sitepairs_signif_Fisher', the number of sites in the window involved in pairs with significant",
                                                 "  Fisher's exact tests (p-value scaled by the number of comparisons in the window < 0.05);",
                                                 "'Local_LD_Index' (aliases: 'LDI', 'Wilcox_Test_Fisher_pval', 'Fisher') [default],",
@@ -236,7 +237,7 @@ if (file.exists(nfldr)){
 if (opt$LD.metric %in% LDI.aliases){
 	measure = "logcompldfisub" # main reported LD metric
 }else{ if (opt$LD.metric == 'median_Fisher_pval'){
-	measure = "medldfisub" # main reported LD metric
+	measure = "medlogldfisub" # main reported LD metric
 }else{ if (opt$LD.metric == 'sitepairs_signif_Fisher'){
 	measure = "signifsitepairs" # main reported LD metric
 }else{
@@ -283,17 +284,25 @@ if (file.exists(nflocld)){
 		ldrollsub[is.na(ldrollsub$compldfisub), 'compldfisub.nonas'] = 1
 		ldrollsub$logcompldfisub.nonas = -log10(ldrollsub$compldfisub.nonas)
 	}else{ if (opt$LD.metric == 'median_Fisher_pval'){
-		measure = "medldfisub" # main reported LD metric
-		medldfisub = function(alnrange){ 
+		measure = "medlogldfisub" # main reported LD metric
+		medlogldfisub = function(alnrange){ 
 			if (length(alnrange)<5){ return(NA) 
 			}else{
 				bialrange = which(bialraregap.i %in% alnrange)
-#~ 				print(bialrange)
-#~ 				med = quantile(-log10(bial.ldr2[bialrange, bialrange]), p=.90, na.rm=T)
 				med = median(-log10(bial.ldr2[bialrange, bialrange]), na.rm=T)
 				return(med)
 		}}
-		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=medldfisub, measures=measure, fun.userange=list(medldfisub=TRUE), multiproc=opt$threads)	
+		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=medlogldfisub, measures=measure, fun.userange=list(medlogldfisub=TRUE), multiproc=opt$threads)	
+	}else{ if (opt$LD.metric == 'top_Fisher_pval'){
+		measure = "toplogldfisub" # main reported LD metric
+		toplogldfisub = function(alnrange){ 
+			if (length(alnrange)<5){ return(NA) 
+			}else{
+				bialrange = which(bialraregap.i %in% alnrange)
+				med = max(-log10(bial.ldr2[bialrange, bialrange]), na.rm=T)
+				return(med)
+		}}
+		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=toplogldfisub, measures=measure, fun.userange=list(toplogldfisub=TRUE), multiproc=opt$threads)	
 	}else{ if (opt$LD.metric == 'sitepairs_signif_Fisher'){
 		measure = "signifsitepairs" # main reported LD metric
 		signifsitepairs = function(alnrange){ 
@@ -317,7 +326,7 @@ if (file.exists(nflocld)){
 			}
 		}
 		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=meanldrsub, measures=measure, fun.userange=list(meanldrsub=TRUE), multiproc=opt$threads)	
-	}}}
+	}}}}
 	ldrollsub$reference.position = map.full2refnona[ldrollsub$foci]
 	
 	
