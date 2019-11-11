@@ -427,7 +427,7 @@ plotphysize = function(w, plotfun, ...){
 }
 
 
-pdf(file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, 'pdf', sep='.'), sep=''), width=15, height=10,
+pdf(file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", minalfrqset, siteset, 'pdf', sep='.'), sep=''), width=21, height=13,
  title=sprintf('%s - local LD %s - windows %dbp', datasettag, opt$LD.metric, opt$physicalwindowsize))
 
 if (opt$LD.metric %in% fishermetrics){
@@ -457,14 +457,12 @@ plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=ylabld, main=paste(
  xlab=genome.coord.str, col='white', xaxp=c(0, toptick, ntickintervals))
 # plot areas of NA's and low-coverage
 windowrect = function(pos){
-	ab = c(pos-ldsearchparsub$step+ldsearchparsub$windowsize/2, pos+ldsearchparsub$step-ldsearchparsub$windowsize/2)
-	if (ab[1] > ab[2]){ return(NA)
-	}else{ return(ab) }
+	c(pos-ldsearchparsub$step/2, pos+ldsearchparsub$step/2)
 }
-winrects.nodata = lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], windowrect)
-pb.nodata = sapply(winrects.nodata[!is.na(winrects.nodata)], plotbound0, coul='grey')
+lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], windowrect)
+pb.nodata = sapply(winrects.nodata, plotbound0, coul='grey')
 winrects.fewsnp = lapply(rollsubsnpdens$reference.position[which(rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize)], windowrect)
-pb.fewsnp = sapply(winrects.fewsnp[!is.na(winrects.fewsnp)], plotbound0, coul='pink')
+pb.fewsnp = sapply(winrects.fewsnp, plotbound0, coul='pink')
 abline(h=0:10, col=ifelse((0:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', rgb(0,0,0,0.3)))
 if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){
