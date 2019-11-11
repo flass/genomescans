@@ -88,7 +88,7 @@ if ( is.null(opt$max.gap           ) ){ opt$max.gap           = 1         }
 if ( is.null(opt$min.allele.freq   ) ){ opt$min.allele.freq   = 1         }
 if ( is.null(opt$crazy.plot        ) ){ opt$crazy.plot        = -1        }
 
-signifthresh = 10^(-opt$signif.thresh)
+signifthresh = opt$signif.thresh
 gapchars = c('-', 'N', 'n')	# various characters to consider as missing data
 
 opt$excl.labels = strsplit(opt$excl.ref.label, split=',')[[1]]
@@ -136,7 +136,7 @@ print(paste("will use", opt$threads, "cores"), quote=F)
 #~ names(ldsearchpar) = c('windowsize', 'step', 'signifthresh')
 # scans with windows with a fixed physical size, variable number of biallelic SNPs but sub-sampled to a maximum to get the closer to a  homogeneous statistical power along the genome; any wndow with lower number of SNP than the max has a large drop in sensitivity for high LD
 # must manage a trade-off between genome coverage (achived by enlarging the windowsize and lowering the maxsize) and resolution using small and SNP-dense winndows (the inverse)
-ldsearchparsub = list(opt$window.size, opt$step, opt$nb.snp, signifthresh)
+ldsearchparsub = list(opt$window.size, opt$step, opt$nb.snp, opt$signif.thresh)
 names(ldsearchparsub) = c('windowsize', 'step', 'maxsize', 'signifthresh')
 
 # load alignment file
@@ -335,7 +335,7 @@ print("'ldrollsub' (head/summary):", quote=F)
 print(head(ldrollsub))
 print(summary(ldrollsub))
 
-hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub < ldsearchparsub$signifthresh)]
+hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub > ldsearchparsub$signifthresh)]
 if ( !is.null(opt$nuc.div) ){
   hypervarfoci = rollnucdiv$reference.position[which(rollnucdiv$nucdiv > nucdivsearchpar$signifthresh)]
 }
@@ -405,12 +405,12 @@ if (!is.null(opt$feature.table)){
 		return(c(p,m))
 	}))
 	
-	hiLDlocisub = rownames(lcds.maxmeasure)[which(lcds.maxmeasure[,2] > -log10(ldsearchparsub$signifthresh))]
+	hiLDlocisub = rownames(lcds.maxmeasure)[which(lcds.maxmeasure[,2] > ldsearchparsub$signifthresh)]
 
 	hiLDgenessub =  gnames[hiLDlocisub]
-	write(hiLDlocisub, file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, sprintf('hiLDloci.pval%g', ldsearchparsub$signifthresh), sep='.'), sep=''))
+	write(hiLDlocisub, file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, sprintf('hiLDloci.LDI%g', ldsearchparsub$signifthresh), sep='.'), sep=''))
 	# ranked genes 
-	write(unique(chompnames(hiLDlocisub)[order(lcds.maxmeasure[hiLDlocisub,2], decreasing=T)]), file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, sprintf('hiLDgenes.pval%g', ldsearchparsub$signifthresh), sep='.'), sep=''))
+	write(unique(chompnames(hiLDlocisub)[order(lcds.maxmeasure[hiLDlocisub,2], decreasing=T)]), file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, sprintf('hiLDgenes.LDI%g', ldsearchparsub$signifthresh), sep='.'), sep=''))
 
 }else{
 	lcds.ref.i = NULL
@@ -432,7 +432,7 @@ pdf(file=paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD", mi
 
 if (opt$LD.metric %in% fishermetrics){
 	sigthresh = ldsearchparsub$signifthresh
-	ylabld = sprintf("LD significance in\n%dbp-wide windows [-log10(p)]", ldsearchparsub$windowsize)
+	ylabld = sprintf("LD significance in\n%dbp-wide windows [%s]", ldsearchparsub$windowsize, measure)
 	histbreaks = 0:40
 }else{
 	sigthresh = quantile(ldrollsub$meanldrsub, p=.95, na.rm=T)
