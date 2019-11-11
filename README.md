@@ -46,37 +46,43 @@ Finally, long-range associations between sites are searched in the whole-genome 
 Many options are available, as described below (result of call with `--help` option):
 
 ```
-Usage: ./genome-wide_localLD_scan.r [-[-genomic.aln|a] <character>] [-[-out.dir|o] <character>] [-[-LD.metric|D] [<character>]] [-[-ref.label|r] [<character>]] [-[-window.size|w] [<integer>]] [-[-step|s] [<integer>]] [-[-nb.snp|m] [<integer>]] [-[-signif.thresh|t] [<double>]] [-[-feature.table|f] [<character>]] [-[-chomp.gene.names|C] [<character>]] [-[-threads|T] [<integer>]] [-[-max.dist.ldr|d] [<integer>]] [-[-max.gap|g] [<integer>]] [-[-min.allele.freq|q] [<integer>]] [-[-crazy.plot|K] [<integer>]] [-[-help|h]]
+Usage: ./genome-wide_localLD_scan.r [-[-genomic.aln|a] <character>] [-[-out.dir|o] <character>] [-[-LD.metric|D] [<character>]] [-[-excl.ref.label|r] [<character>]] [-[-window.size|w] [<integer>]] [-[-step|s] [<integer>]] [-[-nb.snp|m] [<integer>]] [-[-signif.thresh|t] [<double>]] [-[-feature.table|f] [<character>]] [-[-chomp.gene.names|C] [<character>]] [-[-threads|T] [<integer>]] [-[-max.dist.ldr|d] [<integer>]] [-[-max.gap|g] [<integer>]] [-[-min.allele.freq|q] [<integer>]] [-[-nuc.div|n] [<integer>]] [-[-crazy.plot|K] [<integer>]] [-[-help|h]]
     -a|--genomic.aln         path to genomic alignment from which biallelic sites will be searched and LD tested
-    -o|--out.dir             path to an existing ouput folder; a prefix to give to oupout files can be appended, e.g.: 
-                               '/path/to/ouput/folder/file_prefix'
-    -D|--LD.metric           metric to report from measurement of LD, one of: 'r2' (correlation coeff.) 
-                               or 'Fisher' (Local LD Index [default]: -log(10) p.value of a Man-Witney-Wilcoxon U-test 
-                               comparing the local distribution of p-values of Fisher exact tests for pairs of neighbour 
-                               biallelic sites within the window vs. in the whole genome)
-    -r|--ref.label           (comma-separated) label(s) of the genome sequence(s) to exclude from the analysis; 
-                               the first is also assumed to be the reference genome and is used to translate alignment 
-                               coordinates into reference genome coordinates
+    -o|--out.dir             path to an existing ouput folder; a prefix to give to oupout files can be appended, e.g.:
+				'/path/to/ouput/folder/file_prefix'
+    -D|--LD.metric           metric to report from measurement of LD, one of:
+				'r2', the mean site-to-site polymorphism correlation coeff. in the window;
+				'median_Fisher_pval', the median of the -log(10) p-values of Fisher's exact tests in the window;
+				'sitepairs_signif_Fisher', the number of sites in the window involved in pairs with significant
+				  Fisher's exact tests (p-value scaled by the number of comparisons in the window < 0.05);
+				'Local_LD_Index' (aliases: 'LDI', 'Wilcox_Test_Fisher_pval', 'Fisher') [default],
+				  the -log(10) p-value of a Man-Witney-Wilcoxon U-test comparing the local distribution
+				  of p-values of Fisher exact tests for pairs of neighbour biallelic sites
+				  within the window vs. in the whole genome)
+    -r|--excl.ref.label      (comma-separated) label(s) of the genome sequence(s) to exclude from the analysis;
+				the first is also assumed to be the reference genome and is used to translate alignment
+				coordinates into reference genome coordinates
     -w|--window.size         physical size (bp) of the sliding windows in which LD is evaluated [default: 3000]
     -s|--step                step (bp) of the sliding windows in which LD is evaluated [default: 10]
     -m|--nb.snp              number of biallelic SNP within each window that are used for LD computation
-                               (windows with less than that are excluded from the report) [default: 20]
+(windows with less than that are excluded from the report) [default: 20]
     -t|--signif.thresh       threshold of Local LD Index above which the observed LD is significant [default: 5]
     -f|--feature.table       path to GenBank feature table file indicating CDSs and matching the reference sequence coordinates
     -C|--chomp.gene.names    regular expression pattern to shortern gene names; default to '^.+_(.+)_.+$';
-                               disable by providing all-matching pattern '(.+)'
+				disable by providing all-matching pattern '(.+)'
     -T|--threads             number of parallel threds used for computation (beware of memory use increase)
-                               [default to 1: no parallel computation]
+				[default to 1: no parallel computation]
     -d|--max.dist.ldr        maximum distance between pairs of bi-allelic sites for which to compute LD
-                               (in mumber of intervening bi-allelic sites ; Beware: this is not uniform !!! 
-                               polymorphism density varry across the genome !!!); by default compute the full matrix, 
-                               which is rarely that much bigger.
+				(in mumber of intervening bi-allelic sites ; Beware: this is not uniform !!!
+				polymorphism density varry across the genome !!!); by default compute the full matrix,
+				which is rarely that much bigger
     -g|--max.gap             maximum number of allowed missing sequences to keep a site in the alignement for LD and NucDiv computations
     -q|--min.allele.freq     minimum allele frequency (in count of sequences) in bi-alelic sites to be retained
-                               (minalfreq = 1 => all bi-allelic sites [default])
+				(minalfreq = 1 => all bi-allelic sites [default])
+    -n|--nuc.div             window size (bp) enabless computation of nucleotidic diversity within windows of specified size
     -K|--crazy.plot          plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites
-                               to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very long
-                               to plot, and tedious to read as well [not done by default]
+				to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very long
+				to plot, and tedious to read as well [not done by default]
     -h|--help
 ```
 
