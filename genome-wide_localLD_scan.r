@@ -463,7 +463,7 @@ windowrect = function(pos){
 }
 winrects.nodata = lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], windowrect)
 pb.nodata = sapply(winrects.nodata[!is.na(winrects.nodata)], plotbound0, coul='grey')
-winrects.fewsnp = lapply(rollsubsnpdens$reference.position[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], windowrect)
+winrects.fewsnp = lapply(rollsubsnpdens$reference.position[which(rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize)], windowrect)
 pb.fewsnp = sapply(winrects.fewsnp[!is.na(winrects.fewsnp)], plotbound0, coul='pink')
 abline(h=0:10, col=ifelse((0:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', rgb(0,0,0,0.3)))
