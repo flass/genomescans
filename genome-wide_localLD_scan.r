@@ -476,8 +476,8 @@ pb.fewsnp = sapply(winrects.fewsnp, plotbound0, coul='pink')
 abline(h=0:10, col=ifelse((0:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', rgb(0,0,0,0.3)))
 sig.points = ldrollsub[,measure] > sigthresh
-points(map.full2ref[ldrollsub$foci][!sig.points], ldrollsub[,measure], col=rgb(0,0,0,0.3))
-points(map.full2ref[ldrollsub$foci][sig.points], ldrollsub[,measure], col='red')
+points(ldrollsub[!sig.points,'reference.position'], ldrollsub[!sig.points,measure], col=rgb(0,0,0,0.3))
+points(ldrollsub[sig.points,'reference.position'], ldrollsub[sig.points,measure], col='red')
 
 if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){
 	text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5)
