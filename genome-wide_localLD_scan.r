@@ -62,8 +62,8 @@ spec = matrix(c(
   'max.gap',         'g', 2, "integer",   "maximum number of allowed missing sequences to keep a site in the alignement for LD and NucDiv computations",
   'min.allele.freq', 'q', 2, "integer",   paste("minimum allele frequency (in count of sequences) in bi-alelic sites to be retained",
                                                 "(minalfreq = 1 => all bi-allelic sites [default])", sep='\n\t\t\t\t'),
-  'crazy.plot',      'K', 2, "integer",   paste("plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites",
   'nuc.div',         'n', 2, "integer",   "window size (bp) enabless computation of nucleotidic diversity within windows of specified size",
+  'crazy.plot',      'K', 2, "integer",   paste("plots the genome-wide pairwise site LD matrix to a PDF file; parameter value gives the number of sites",
                                                "to represent per page in a sub-matrix; number of cells to plot grows quickly, this can be very long",
                                                 "to plot, and tedious to read as well [not done by default]", sep='\n\t\t\t\t'),
   'help',            'h', 0, "logical",   ""
