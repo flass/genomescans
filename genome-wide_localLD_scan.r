@@ -442,15 +442,24 @@ if (opt$LD.metric %in% fishermetrics){
 ### summary and genomic map plots
 par(mar=c(8,8,8,8))
 # subsampled data scan
-plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=ylabld, main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'), xlab=genome.coord.str, col='white')
+xmax = max(map.full2ref)
+if (xmax > 50000){
+	ntickintervals = xmax %/% 10000
+	toptick = ntickintervals * 10000
+}else{ if (xmax > 20000){
+	ntickintervals = xmax %/% 5000
+	toptick = ntickintervals * 5000
+}else{
+	ntickintervals = xmax %/% 2000
+	toptick = ntickintervals * 2000
+}}
+plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=ylabld, main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'),
+ xlab=genome.coord.str, col='white', xaxp=c(0, toptick, ntickintervals))
 # plot areas of NA's and low-coverage
-
-
-
 pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound0, coul='grey')
 pb = sapply(lapply(rollsubsnpdens$reference.position[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound0, coul='pink')
-abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
-points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', 'black'))
+abline(h=0:10, col=ifelse((0:10)%%5==0, 'grey', 'lightgrey'))
+points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', rgb(0,0,0,0.3)))
 if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){
 	text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5)
 }
