@@ -456,8 +456,15 @@ if (xmax > 50000){
 plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=ylabld, main=paste(datasettag, "LD scan with fixed-size windows", sep='\n'),
  xlab=genome.coord.str, col='white', xaxp=c(0, toptick, ntickintervals))
 # plot areas of NA's and low-coverage
-pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound0, coul='grey')
-pb = sapply(lapply(rollsubsnpdens$reference.position[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound0, coul='pink')
+windowrect = function(pos){
+	ab = c(pos-ldsearchparsub$step+ldsearchparsub$windowsize/2, pos+ldsearchparsub$step-ldsearchparsub$windowsize/2)
+	if (ab[1] > ab[2]){ return(NA)
+	}else{ return(ab) }
+}
+winrects.nodata = lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], windowrect)
+pb.nodata = sapply(winrects.nodata[!is.na(winrects.nodata)], plotbound0, coul='grey')
+winrects.fewsnp = lapply(rollsubsnpdens$reference.position[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], windowrect)
+pb.fewsnp = sapply(winrects.fewsnp[!is.na(winrects.fewsnp)], plotbound0, coul='pink')
 abline(h=0:10, col=ifelse((0:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', rgb(0,0,0,0.3)))
 if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){
