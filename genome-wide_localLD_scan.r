@@ -447,10 +447,10 @@ plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=ylabld, main=paste(
 
 
 
-pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, coul='grey')
-pb = sapply(lapply(rollsubsnpdens$reference.position[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound, coul='pink')
+pb = sapply(lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound0, coul='grey')
+pb = sapply(lapply(rollsubsnpdens$reference.position[rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize], function(pos){ c(pos-ldsearchparsub$windowsize/2, pos-1+ldsearchparsub$windowsize/2) }), plotbound0, coul='pink')
 abline(h=1:10, col=ifelse((1:10)%%5==0, 'grey', 'lightgrey'))
-points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] < sigthresh, 'red', 'black'))
+points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', 'black'))
 if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){
 	text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5)
 }
