@@ -268,12 +268,11 @@ if (file.exists(nflocld)){
 		subsamplesize = ldsearchparsub$maxsize*(ldsearchparsub$maxsize - 1)/2
 		# use quantiles tu ensure sample is representative of the distribution
 		# excludes NA located in the lower triangular matrix so as to get the right count of informative cells
-		subsamplewgfi = quantile(bial.ldr2[subribbon.i], p=(0:samplesize)/subsamplesize, na.rm=T)	
+		subsamplewgfi = quantile(bial.ldr2[subribbon.i], p=(0:subsamplesize)/subsamplesize, na.rm=T)	
 		compldfisub = function(alnrange){ 
 			if (length(alnrange)<5){ return(NA) 
 			}else{
 				bialrange = which(bialraregap.i %in% alnrange)
-#~ 				print(bialrange)
 				wt = wilcox.test(-log10(bial.ldr2[bialrange, bialrange]), -log10(subsamplewgfi), alternative='greater')
 				return(wt$p.val)
 		}}
@@ -476,6 +475,10 @@ winrects.fewsnp = lapply(rollsubsnpdens$reference.position[which(rollsubsnpdens$
 pb.fewsnp = sapply(winrects.fewsnp, plotbound0, coul='pink')
 abline(h=0:10, col=ifelse((0:10)%%5==0, 'grey', 'lightgrey'))
 points(map.full2ref[ldrollsub$foci], ldrollsub[,measure], col=ifelse(ldrollsub[,measure] > sigthresh, 'red', rgb(0,0,0,0.3)))
+sig.points = ldrollsub[,measure] > sigthresh
+points(map.full2ref[ldrollsub$foci][!sig.points], ldrollsub[,measure], col=rgb(0,0,0,0.3))
+points(map.full2ref[ldrollsub$foci][sig.points], ldrollsub[,measure], col='red')
+
 if (!is.null(lcds.ref.i) & length(hiLDgenes)>0){
 	text(labels=paste(hiLDgenessub[!is.na(hiLDgenessub)], '\'', sep='\n'), x=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],1], y=lcds.maxmeasure[hiLDlocisub[!is.na(hiLDgenessub)],2]+.5)
 }
