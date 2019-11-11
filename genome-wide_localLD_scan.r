@@ -459,7 +459,7 @@ plot(map.full2ref[ldrollsub$foci], ldrollsub[,measure], ylab=ylabld, main=paste(
 windowrect = function(pos){
 	c(pos-ldsearchparsub$step/2, pos+ldsearchparsub$step/2)
 }
-lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], windowrect)
+winrects.nodata = lapply(ldrollsub$reference.position[is.na(ldrollsub[,measure])], windowrect)
 pb.nodata = sapply(winrects.nodata, plotbound0, coul='grey')
 winrects.fewsnp = lapply(rollsubsnpdens$reference.position[which(rollsubsnpdens$reportsnpdens < ldsearchparsub$maxsize)], windowrect)
 pb.fewsnp = sapply(winrects.fewsnp, plotbound0, coul='pink')
