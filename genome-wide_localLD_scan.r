@@ -248,7 +248,6 @@ nflocld = paste(opt$out.dir, paste(sprintf("LD_%s", LDmetric1), "LocalLD", minal
 if (file.exists(nflocld)){ 
 	load(nflocld)
 	if (is.null(ldrollsub$reference.position)){ ldrollsub$reference.position = map.full2refnona[ldrollsub$foci] }
-	if (is.null(rollsubsnpdens$reference.position)){ rollsubsnpdens$reference.position = map.full2refnona[rollsubsnpdens$foci] }
 }else{
 	print("get local LD intensity", quote=F)
 	if (opt$LD.metric %in% LDI.aliases){		
@@ -328,21 +327,24 @@ if (file.exists(nflocld)){
 		ldrollsub = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=meanldrsub, measures=measure, fun.userange=list(meanldrsub=TRUE), multiproc=opt$threads)	
 	}}}}
 	ldrollsub$reference.position = map.full2refnona[ldrollsub$foci]
-	
-	
-	
-	print("get local biallelic SNP density", quote=F)
-	
-	reportsnpdens = function(alnrange){ length(alnrange) }
-	rollsubsnpdens = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=reportsnpdens, measures=c("reportsnpdens"), fun.userange=list(reportsnpdens=TRUE), multiproc=opt$threads)	
-	rollsubsnpdens$reference.position = map.full2refnona[rollsubsnpdens$foci]
-	
-	save(ldrollsub, rollsubsnpdens, file=nflocld)
+	save(ldrollsub, file=nflocld)
 	write.table(ldrollsub, paste(opt$out.dir, paste(sprintf("LD_%s", opt$LD.metric), "LocalLD-subsampled", minalfrqset, siteset, 'tab', sep='.'), sep=''))
 }
 print("'ldrollsub' (head/summary):", quote=F)
 print(head(ldrollsub))
 print(summary(ldrollsub))
+
+nfsubsnpdens = paste(opt$out.dir, paste("Subsampled_Biallelic_Site_Density", minalfrqset, siteset, 'RData', sep='.'), sep='')
+if (file.exists(nfsubsnpdens)){ 
+	load(nfsubsnpdens)
+	if (is.null(rollsubsnpdens$reference.position)){ rollsubsnpdens$reference.position = map.full2refnona[rollsubsnpdens$foci] }
+}else{
+	print("get local biallelic SNP density", quote=F)
+	reportsnpdens = function(alnrange){ length(alnrange) }
+	rollsubsnpdens = rollStats(full.aln, subsample=list(sites=bialraregap.i, maxsize=ldsearchparsub$maxsize), windowsize=ldsearchparsub$windowsize, step=ldsearchparsub$step, fun=reportsnpdens, measures=c("reportsnpdens"), fun.userange=list(reportsnpdens=TRUE), multiproc=opt$threads)	
+	rollsubsnpdens$reference.position = map.full2refnona[rollsubsnpdens$foci]
+	save(rollsubsnpdens, file=nfsubsnpdens)
+}
 
 hiLDfocisub = ldrollsub$reference.position[which(ldrollsub$compldfisub > ldsearchparsub$signifthresh)]
 if ( !is.null(opt$nuc.div) ){
