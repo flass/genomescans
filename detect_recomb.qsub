@@ -9,29 +9,36 @@
 #$ -l scr=1G
 #$ -pe mpi 5
 
+thisscript=${0}
+dirscripts=$(dirname ${thisscript})
 
 if [ -z $3 ] ; then
-  echo "Usage: detect_recomb.qsub task_list program(s)(p1{Phi|SBP|GARD|GENECONV|all}[,p2[,...]]) tabular_output_file [nbchunks]"
+  echo "Usage: detect_recomb.qsub task_list program(s)(p1{Phi|SBP|GARD|GENECONV|all}[,p2[,...]]) tabular_output_file [nbchunks] [temp_work_folder]"
   exit 2
 fi
-tasklist=$1
-recprogs=$2
-outtab=$3
-if [ -z $4 ] ; then
-  nbchunks=$SGE_TASK_LAST
+tasklist=${1}
+recprogs=${2}
+outtab=${3}
+if [ -z ${4} ] ; then
+  nbchunks=${SGE_TASK_LAST}
 else
-  nbchunks=$4
+  nbchunks=${4}
+fi
+if [ -z ${5} ] ; then
+  locdir=${5}
 fi
 
 date
 echo "This is job $JOB_NAME, job-ID $JOB_ID, ja-task-ID $SGE_TASK_ID ($JOB_ID.$SGE_TASK_ID) on host $HOSTNAME"
 #mypython='/share/apps/python-2.7.3-static/bin/python2.7'
 #mypython='/share/apps/python-2.7.10-shared/bin/python2.7'
-mypython='/share/apps/python/bin/python2.7'
+[ -z ${mypython} ] && export mypython='python2.7'
 #export myhyphy="/share/apps/genomics/hyphy"
-export myhyphy="/home/ucbtass/Programs/hyphy"
+[ -z ${myhyphy} ] && export myhyphy="$(basename $(basename $(which HYPHYMPI)))"
+[ -z ${myhyphy} ] && echo "could not find location of executable 'HYPHYMPI' and installation folder of HypPhy; please specify it by exporting environment variable 'myhyphy', e.g. 'export myhyphy=/usr/local/share/hyphy'" && echo "exit now" && exit 1
 #export mympi="/share/apps/openmpi-1.8.1/bin/mpiexec --mca btl_tcp_if_include eth0"
-export mympi="/opt/openmpi/bin/mpiexec"
+[ -z ${mympi} ] && export mympi="$(which mpiexec)"
+[ -z ${mympi} ] && echo "could not find location of executable 'mpiexec'; please specify it by exporting environment variable 'mympi'" && echo "exit now" && exit 1
 #~ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/openmpi/lib
 #export mympi="/opt/SUNWhpc/HPC8.2.1/gnu/bin/mpirun --mca btl_tcp_if_exclude lo,eth0"
 
@@ -68,24 +75,26 @@ EOF
 cat $nfsubtasklist
 echo ""
 
-# chdir to a local directory to do in out there
-locdir=/scratch0/$USER/detect_recomb.$nfsubtasklist
-mkdir -p $locdir
-cd $locdir
-
+# chdir to a local directory to do read/write operations there
+if [ ! -z ${locdir} ] ; then
+  mkdir -p $locdir
+  cd $locdir
+fi
 #~ $mypython /home/ucbtass/Python_lib/detect_recomb.py $nfsubtasklist $recprogs $nfsubouttab $NSLOTS >& ${SGE_STDOUT_PATH}_${chunkfirst}-${chunklast}
-$mypython /home/ucbtass/scripts/recomb_scripts/detect_recomb.py $nfsubtasklist $recprogs $nfsubouttab $NSLOTS
+$mypython ${dirscripts}/detect_recomb.py $nfsubtasklist $recprogs $nfsubouttab $NSLOTS
 
 #~ # check completion of all sister job for fusion of results in one same table
 #~ if [ `qstat | grep -c $JOB_ID` -eq 1 ] ; then
   #~ cat ${outtab}_* > $outtab
 #~ fi
-
+if [ ! -z ${locdir} ] ; then
 #clean the mess in local dir
-echo "was in: $PWD"
-echo "ls ."
-ls .
-echo "rm -r $locdir/"
-rm -r $locdir/
-echo "ls $locdir"
-ls $locdir
+	echo "was in: $PWD"
+	cd
+	echo "ls ."
+	ls .
+	echo "rm -r ${locdir}/"
+	rm -r ${locdir}/
+	echo "ls ${locdir}"
+	ls ${locdir}
+fi
