@@ -32,13 +32,13 @@ date
 echo "This is job $JOB_NAME, job-ID $JOB_ID, ja-task-ID $SGE_TASK_ID ($JOB_ID.$SGE_TASK_ID) on host $HOSTNAME"
 #mypython='/share/apps/python-2.7.3-static/bin/python2.7'
 #mypython='/share/apps/python-2.7.10-shared/bin/python2.7'
-[ -z ${mypython} ] && export mypython='python2.7'
+[ -z "${mypython}" ] && export mypython='python2.7'
 #export myhyphy="/share/apps/genomics/hyphy"
-[ -z ${myhyphy} ] && export myhyphy="$(basename $(basename $(which HYPHYMPI)))"
-[ -z ${myhyphy} ] && echo "could not find location of executable 'HYPHYMPI' and installation folder of HypPhy; please specify it by exporting environment variable 'myhyphy', e.g. 'export myhyphy=/usr/local/share/hyphy'" && echo "exit now" && exit 1
+[ -z "${myhyphy}" ] && export myhyphy="$(basename $(basename $(which HYPHYMPI)))"
+[ -z "${myhyphy}" ] && echo "could not find location of executable 'HYPHYMPI' and installation folder of HypPhy; please specify it by exporting environment variable 'myhyphy', e.g. 'export myhyphy=/usr/local/share/hyphy'" && echo "exit now" && exit 1
 #export mympi="/share/apps/openmpi-1.8.1/bin/mpiexec --mca btl_tcp_if_include eth0"
-[ -z ${mympi} ] && export mympi="$(which mpiexec)"
-[ -z ${mympi} ] && echo "could not find location of executable 'mpiexec'; please specify it by exporting environment variable 'mympi'" && echo "exit now" && exit 1
+[ -z "${mympi}" ] && export mympi="$(which mpiexec)"
+[ -z "${mympi}"] && echo "could not find location of executable 'mpiexec'; please specify it by exporting environment variable 'mympi'" && echo "exit now" && exit 1
 #~ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/openmpi/lib
 #export mympi="/opt/SUNWhpc/HPC8.2.1/gnu/bin/mpirun --mca btl_tcp_if_exclude lo,eth0"
 
