@@ -37,11 +37,13 @@ The [genome-wide_localLD_scan.r] script performs a genome-wide search for LD bet
 
 First this script computes all r^2 or Fisher's exact test p-values for all pairs of bi-allelic sites in the genomes, and stores then in a matrix (saved in an `.RData` file). This can be restrained to neighbouring sites using `--max.dist.ldr` option to save computional time when ong-range LD is not of interest.
 
-Then, it performs a sliding-window scan, reporting a map (and peaks) of *local LD*, based on either the average r^2 in each window (`-- LD.metric=r2`), or by testing for local excess of LD compared to the whole genome (`-- LD.metric=Fisher`).
+Then, it performs a sliding-window scan, reporting a map (and peaks) of *local LD*, based on either the average r^2 in each window (`--LD.metric=r2`), or by testing for local excess of LD compared to the whole genome (`-- LD.metric=Fisher`).
 
 The 'Fisher' version of the scan is done by selecting a number *b* (20 by default) of most-equally spaced biallelic sites in the focal window of size *w* (3000 bp by default) and retrieving the  Fisher's exact test p-values for all site pairs; the resulting p-value distribution is compared to a same-size quantile sample of the distributon observed over the whole genome within similar distances. This comparison is done with a Man-Witney-Wilcoxon U-test and its -log10-transformed p-value is reported as the **local LD index**. Note that windows with less than *b* biallelic sites are considered not fit for testing and are not reported; the size of windows *w* must therefore be adapted to the density of biallelic sites so to cover most of the genome, with a trade-off with precision on the location of reported LD peaks.
 
 Finally, long-range associations between sites are searched in the whole-genome LD matrix, using Bonferroni correction to scale Fisher's p-values.
+
+This script was originally designed to be applied to alignments of mapped assemblies, and to include the reference genome. If provided, this reference genome is used to provide coodinates of of the sites in the ouput; it is otherwise ignored for the LD computations. The reference genome label can be specified as the argument of the `-r|--excl.ref.label` option (specifically as its first part if a comma-separated list of genome labels). If nothing is specified, by default the coordinates are taken from the first alignment row.
 
 Many options are available, as described below (result of call with `--help` option):
 

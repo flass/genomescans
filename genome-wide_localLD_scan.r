@@ -92,8 +92,13 @@ if ( is.null(opt$crazy.plot        ) ){ opt$crazy.plot        = -1        }
 signifthresh = opt$signif.thresh
 gapchars = c('-', 'N', 'n')	# various characters to consider as missing data
 
-opt$excl.labels = strsplit(opt$excl.ref.label, split=',')[[1]]
-opt$ref.label = opt$excl.labels[1]
+if ( !is.null(opt$excl.ref.label   ) ){
+	opt$excl.labels = strsplit(opt$excl.ref.label, split=',')[[1]]
+    opt$ref.label = opt$excl.labels[1]
+}else{
+	opt$excl.labels = c()
+	opt$ref.label = 1
+}
 genome.coord.str = sprintf('%s genome coordinates', opt$ref.label)
 
 print("will use the following parameters:", quote=F)
